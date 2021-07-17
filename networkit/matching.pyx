@@ -22,7 +22,7 @@ cdef class Matching:
 	def match(self, node u, node v):
 		"""
 		Set two nodes u and v as each others matching partners.
-		
+
 		Parameters:
 		-----------
 		u : node
@@ -33,7 +33,7 @@ cdef class Matching:
 	def unmatch(self, node u,  node v):
 		"""
 		Reset the two nodes u and v to unmatched.
-		
+
 		Parameters:
 		-----------
 		u : node
@@ -44,11 +44,11 @@ cdef class Matching:
 	def isMatched(self, node u):
 		"""
 		Check if node u is matched.
-		
+
 		Parameters:
 		-----------
 		u : node
-		
+
 		Returns:
 		-----------
 		bool
@@ -59,12 +59,12 @@ cdef class Matching:
 	def areMatched(self, node u, node v):
 		"""
 		Check if the nodes u and v are matched to each other.
-		
+
 		Parameters:
 		-----------
 		u : node
 		v : node
-		
+
 		Returns:
 		-----------
 		bool
@@ -76,7 +76,7 @@ cdef class Matching:
 		"""
 		Check whether this is a proper matching in the graph, i.e. there is an edge between
 		each pair and if the matching partner of v is u then the matching partner of u is v.
-		
+
 		Parameters:
 		-----------
 		G : networkit.Graph
@@ -91,11 +91,11 @@ cdef class Matching:
 	def size(self, Graph G):
 		"""
 		Get the number of edges in this matching.
-		
+
 		Parameters:
 		-----------
 		G : networkit.Graph
-		
+
 		Returns:
 		-----------
 		int
@@ -106,11 +106,11 @@ cdef class Matching:
 	def mate(self, node v):
 		"""
 		Get the matched neighbor of v if it exists, otherwise +inf.
-		
+
 		Parameters:
 		-----------
 		v : node
-		
+
 		Returns:
 		-----------
 		int
@@ -121,12 +121,12 @@ cdef class Matching:
 	def weight(self, Graph G):
 		"""
 		Get total weight of edges in this matching.
-		
+
 		Parameters:
 		-----------
 		G : networkit.Graph
 			The corresponding graph.
-		
+
 		Returns:
 		-----------
 		float
@@ -138,16 +138,16 @@ cdef class Matching:
 		"""
 		Convert matching to a Partition object where matched nodes belong to the same subset
 		and unmatched nodes belong to a singleton subset.
-		
+
 		Parameters:
 		-----------
 		G : networkit.Graph
 			The corresponding graph.
-			
+
 		Returns:
 		-----------
 		networkit.Partition
-			
+
 		"""
 		return Partition().setThis(self._this.toPartition(G._this))
 
@@ -176,7 +176,7 @@ cdef class Matcher(Algorithm):
 			raise RuntimeError("Instantiation of abstract base class")
 
 	def getMatching(self):
-		""" 
+		"""
 		Returns the matching.
 
 		Returns:
@@ -198,11 +198,11 @@ cdef class PathGrowingMatcher(Matcher):
 	"""
 	Path growing matching algorithm as described by  Hougardy and Drake.
 	Computes an approximate maximum weight matching with guarantee 1/2.
-	
+
 	Parameters:
 	-----------
 	G : networkit.Graph
-		Graph to apply matching.
+		The input graph (undirected and with no self-loops).
 	edgeScores : list, optional
 		list with edgeScores.
 	"""
@@ -213,3 +213,30 @@ cdef class PathGrowingMatcher(Matcher):
 		else:
 			self._this = new _PathGrowingMatcher(G._this)
 
+cdef extern from "<networkit/matching/SuitorMatcher.hpp>":
+	cdef cppclass _SuitorMather "NetworKit::SuitorMatcher"(_Matcher):
+		_SuitorMather(_Graph, bool_t, bool_t) except +
+
+cdef class SuitorMatcher(Matcher):
+	"""
+	Computes a 1/2-approximation of the maximum (weighted) matching of an undirected graph using
+	the Suitor algorithm from Manne and Halappanavar presented in "New Effective Multithreaded
+	Matching Algorithms", IPDPS 2014. The algorithm has two versions: SortSuitor (faster, but
+	only works on graphs with adjacency lists sorted by non-increasing edge weight) and Suitor
+	(works on generic graphs). If using SortSuitor, call nk.graphtools.sortEdgesByWeight(G, True)
+	to sort the adjacency lists by non-increasing edge weight.
+
+	Parameters:
+	-----------
+	G : networkit.Graph
+		The input graph, must be undirected.
+	sortSuitor : bool
+		If True uses the SortSuitor version, otherwise it uses Suitor.
+	checkSortedEdges : bool
+		If True and sortSuitor is True it checks whether the adjacency lists
+		of the input graph are sorted by non-increasing edge weight. If they are not it raises
+		a RuntimeError.
+	"""
+	def __cinit__(self, Graph G not None, sortSuitor = True, checkSortedEdges = False):
+		self.G = G
+		self._this = new _SuitorMather(G._this, sortSuitor, checkSortedEdges)

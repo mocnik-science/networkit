@@ -5,6 +5,7 @@ networkit_add_module(community
     Conductance.cpp
     CoverHubDominance.cpp
     CoverF1Similarity.cpp
+    OverlappingNMIDistance.cpp
     Coverage.cpp
     CutClustering.cpp
     DissimilarityMeasure.cpp
@@ -32,6 +33,7 @@ networkit_add_module(community
     SampledGraphStructuralRandMeasure.cpp
     SampledNodeStructuralRandMeasure.cpp
     StablePartitionNodes.cpp
+	LouvainMapEquation.cpp
     )
 
 networkit_module_link_modules(community

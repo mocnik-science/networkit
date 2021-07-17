@@ -390,6 +390,30 @@ cdef class PLM(CommunityDetector):
 	def prolong(Graph Gcoarse, Partition zetaCoarse, Graph Gfine, vector[node] nodeToMetaNode):
 		return Partition().setThis(PLM_prolong(Gcoarse._this, zetaCoarse._this, Gfine._this, nodeToMetaNode))
 
+cdef extern from "<networkit/community/LouvainMapEquation.hpp>":
+	cdef cppclass _LouvainMapEquation "NetworKit::LouvainMapEquation"(_CommunityDetectionAlgorithm):
+		_LouvainMapEquation(_Graph, bool, count, string ) except +
+
+cdef class LouvainMapEquation(CommunityDetector):
+	"""
+	Community detection algorithm based on the Louvain algorithm. Uses the Map Equation to find communities.
+
+	Parameters
+	----------
+	G : networkit.Graph
+		The graph on which the algorithm has to run.
+	hierarchical: bool
+		(optional) Iteratively create a graph of the locally optimal clusters and optimize locally on that graph.
+	maxIterations: count
+		(optional) The maximum number of local move iterations.
+	parallelizationStrategy: string
+		(optional) relaxmap, synchronous, or none. default relaxmap.
+	"""
+
+	def __cinit__(self, Graph G not None, hierarchical = False, maxIterations = 32, parallelizationStrategy = "relaxmap"):
+		self._G = G
+		self._this = new _LouvainMapEquation(G._this, hierarchical, maxIterations, stdstring(parallelizationStrategy))
+
 cdef extern from "<networkit/community/PLP.hpp>":
 
 	cdef cppclass _PLP "NetworKit::PLP"(_CommunityDetectionAlgorithm):
@@ -1219,3 +1243,112 @@ class InfomapAdapter:
 	def getPartition(self):
 		return self.result
 """
+
+
+cdef extern from "<networkit/community/OverlappingNMIDistance.hpp>" namespace "NetworKit::OverlappingNMIDistance":
+
+	cdef enum _Normalization "NetworKit::OverlappingNMIDistance::Normalization":
+		MIN,
+		GEOMETRIC_MEAN,
+		ARITHMETIC_MEAN,
+		MAX,
+		JOINT_ENTROPY
+
+cdef extern from "<networkit/community/OverlappingNMIDistance.hpp>":
+
+	cdef cppclass _OverlappingNMIDistance "NetworKit::OverlappingNMIDistance":
+		_OverlappingNMIDistance() except +
+		_OverlappingNMIDistance(_Normalization normalization) except +
+		void setNormalization(_Normalization normalization) except +
+		double getDissimilarity(_Graph G, _Partition first, _Partition second) nogil except +
+		double getDissimilarity(_Graph G, _Cover first, _Cover second) nogil except +
+
+cdef class OverlappingNMIDistance(DissimilarityMeasure):
+	"""
+	Compare two covers using the overlapping normalized mutual information measure. This is a dissimilarity measure with
+	a range of [0, 1]. A value of 0 indicates a perfect agreement while a 1 indicates complete disagreement.
+
+	For the `OverlappingNMIDistance.Max` normalization, this is the measure introduced in [NMI13]. Other normalization
+	methods result in similar measures.
+
+	Parameters
+	----------
+	normalization : {Min, GeometricMean, ArithmeticMean, Max, JointEntropy}, optional
+		The default is OverlappingNMIDistance.Max.
+
+	Raises
+	------
+	ValueError
+	    If `normalization` is not one of the available methods.
+
+	References
+	----------
+	[NMI13]
+		McDaid, Aaron F., Derek Greene, and Neil Hurley. "Normalized Mutual Information to Evaluate Overlapping
+		Community Finding Algorithms." ArXiv:1110.2515 [Physics], August 2, 2013. http://arxiv.org/abs/1110.2515.
+	"""
+	cdef _OverlappingNMIDistance _this
+
+	Min = _Normalization.MIN
+	GeometricMean = _Normalization.GEOMETRIC_MEAN
+	ArithmeticMean = _Normalization.ARITHMETIC_MEAN
+	Max = _Normalization.MAX
+	JointEntropy = _Normalization.JOINT_ENTROPY
+
+	def __cinit__(self, _Normalization normalization = _Normalization.MAX):
+		self._validateNormalization(normalization)
+		self._this = _OverlappingNMIDistance(normalization)
+
+	def setNormalization(self, _Normalization normalization):
+		"""
+		Set the normalization method.
+
+		Parameters
+		----------
+		normalization : {Min, GeometricMean, ArithmeticMean, Max, JointEntropy}
+
+		Raises
+		------
+		ValueError
+		    If `normalization` is not one of the available methods.
+		"""
+		self._validateNormalization(normalization)
+		self._this.setNormalization(normalization)
+
+	def getDissimilarity(self, Graph G, PartitionCover first, PartitionCover second):
+		"""
+		Calculate the dissimilarity.
+
+		Parameters
+		----------
+		G : networkit.Graph
+		first : networkit.Partition or networkit.Cover
+		second : networkit.Partition or networkit.Cover
+			Must be the same type as `first`.
+
+		Raises
+		------
+		TypeError
+		    If `first` and `second` do not have the same type.
+		ValueError
+		    If `G`, `first` and `second` do not have the matching number of nodes.
+
+		Returns
+		-------
+		distance : float
+		"""
+		cdef double ret
+		if isinstance(first, Partition) and isinstance(second, Partition):
+			with nogil:
+				ret = self._this.getDissimilarity(G._this, (<Partition>(first))._this, (<Partition>(second))._this)
+		elif isinstance(first, Cover) and isinstance(second, Cover):
+			with nogil:
+				ret = self._this.getDissimilarity(G._this, (<Cover>(first))._this, (<Cover>(second))._this)
+		else:
+			raise TypeError("Error, first and second must both be either a Partition or a Cover")
+		return ret
+
+	def _validateNormalization(self, _Normalization normalization):
+		if normalization not in {OverlappingNMIDistance.Min, OverlappingNMIDistance.GeometricMean,
+				OverlappingNMIDistance.ArithmeticMean, OverlappingNMIDistance.Max, OverlappingNMIDistance.JointEntropy}:
+			raise ValueError("Error, invalid normalization method")

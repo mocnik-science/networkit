@@ -11,9 +11,10 @@
 #include <cmath>
 #include <vector>
 
+#include <networkit/algebraic/DenseMatrix.hpp>
+#include <networkit/auxiliary/Timer.hpp>
 #include <networkit/numerics/LAMG/LevelHierarchy.hpp>
 #include <networkit/numerics/Smoother.hpp>
-#include <networkit/algebraic/DenseMatrix.hpp>
 
 namespace NetworKit {
 
@@ -207,7 +208,7 @@ void SolverLamg<Matrix>::cycle(Vector& x, const Vector& b, int finest, int coars
                 maxVisits = hierarchy.cycleIndex(currLvl) * numVisits[currLvl-1];
             }
 
-            if (numVisits[currLvl] < maxVisits) {
+            if (numVisits[currLvl] < static_cast<count>(maxVisits)) {
                 nextLvl = currLvl + 1;
             } else {
                 nextLvl = currLvl - 1;
