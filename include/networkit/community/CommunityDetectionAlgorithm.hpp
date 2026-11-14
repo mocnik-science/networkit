@@ -25,7 +25,7 @@ public:
      *
      * @param[in] G input graph
      */
-    CommunityDetectionAlgorithm(const Graph& G);
+    CommunityDetectionAlgorithm(const Graph &G);
 
     /**
      * A community detection algorithm operates on a graph, so the constructor expects a graph.
@@ -47,15 +47,10 @@ public:
      * Returns the result of the run method or throws an error, if the algorithm hasn't run yet.
      * @return partition of the node set
      */
-    virtual Partition getPartition();
-
-    /**
-     * @return string representation of algorithm and parameters.
-     */
-    std::string TLX_DEPRECATED(toString() const override);
+    virtual const Partition &getPartition() const;
 
 protected:
-    const Graph* G;
+    const Graph *G;
     Partition result;
 };
 

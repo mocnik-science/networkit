@@ -17,10 +17,14 @@ We provide several example notebooks to get started with NetworKit and Jupyter N
    notebooks/Community
    notebooks/Components
    notebooks/Distance
+   notebooks/Dynamics
    notebooks/Generators
    notebooks/GraphNotebook
    notebooks/GroupCentrality
    notebooks/IONotebook
    notebooks/LinkPrediction
+   notebooks/Plot
    notebooks/Randomization
+   notebooks/Reachability
    notebooks/Sparsification
+   notebooks/Visualization

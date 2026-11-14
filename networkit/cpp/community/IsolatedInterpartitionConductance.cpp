@@ -27,9 +27,7 @@ void NetworKit::IsolatedInterpartitionConductance::run() {
     handler.assureRunning();
 
     std::vector<count> clusterSize(P->upperBound(), 0);
-    G->forNodes([&](node u) {
-        ++clusterSize[(*P)[u]];
-    });
+    G->forNodes([&](node u) { ++clusterSize[(*P)[u]]; });
 
     handler.assureRunning();
 

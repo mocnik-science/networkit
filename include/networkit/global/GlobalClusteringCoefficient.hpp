@@ -1,5 +1,5 @@
 /*
- * GlobalClusteringCoefficient.h
+ * GlobalClusteringCoefficient.hpp
  *
  *  Created on: 12.11.2013
  */
@@ -16,8 +16,8 @@ namespace NetworKit {
  */
 class GlobalClusteringCoefficient {
 
-public:  
-    virtual double approximate(const Graph& G, int k);
+public:
+    virtual double approximate(const Graph &G, int k);
 };
 
 } /* namespace NetworKit */

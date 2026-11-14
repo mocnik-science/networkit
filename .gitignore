@@ -9,6 +9,7 @@ plots
 *.dot$
 tracelog*
 *.json
+!CMakePresets.json
 *.csv
 scripts/SparsificationEvaluation/input/
 scripts/SparsificationEvaluation/output/
@@ -30,7 +31,6 @@ doxygen
 dist/
 
 ### NetworKit specific
-include/NetworKit
 NetworKit-Tests-*
 .buildDbg/
 output
@@ -75,6 +75,7 @@ __pycache__
 *.exe
 *.out
 *.app
+*.pyd
 
 ### CMake
 CMakeCache.txt

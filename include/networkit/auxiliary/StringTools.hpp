@@ -1,5 +1,5 @@
 /*
- * StringTools.h
+ * StringTools.hpp
  *
  *  Completely rewritten on: 12.05.2014
  *      Author: Florian Weber (uagws@student.kit.edu)
@@ -9,8 +9,11 @@
 #define NETWORKIT_AUXILIARY_STRING_TOOLS_HPP_
 
 #include <algorithm>
-#include <vector>
 #include <string>
+#include <string_view>
+#include <vector>
+
+#include <tlx/define/deprecated.hpp>
 
 namespace Aux {
 
@@ -27,14 +30,14 @@ namespace StringTools {
  *   any Character.
  *   Iterator must be an input-iterator over Characters.
  */
-template<typename Iterator, typename Character>
+template <typename Iterator, typename Character>
 std::vector<std::string> split(Iterator begin, Iterator end, Character delim = Character{' '}) {
-    
+
     // measurements showed that precalculating the number of tokens and
     // reserving space for them was in fact slower than just letting
     // the vector grow naturally.
     std::vector<std::string> tokens;
-    
+
     auto it = begin;
     while (it != end) {
         auto tmp = std::find(it, end, delim);
@@ -44,7 +47,6 @@ std::vector<std::string> split(Iterator begin, Iterator end, Character delim = C
         }
         it = tmp;
         ++it;
-        
     }
     return tokens;
 }
@@ -52,24 +54,28 @@ std::vector<std::string> split(Iterator begin, Iterator end, Character delim = C
 /**
  * Split a string at delimiter and return vector of parts.
  */
-inline std::vector<std::string> split(const std::string& s, char delim = ' ') {
+inline std::vector<std::string> split(std::string_view s, char delim = ' ') {
     return split(s.begin(), s.end(), delim);
 }
 
 /**
+ * DEPRECATED: use std::string_view::ends_with instead.
  * Determines whether @a str ends with @a suffix.
  */
-inline bool ends_with(const std::string& str, const std::string& suffix) {
-    return str.size() >= suffix.size() &&
-           str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
-}
+inline bool TLX_DEPRECATED(ends_with(std::string_view str, std::string_view suffix));
 
 /**
+ * DEPRECATED: use std::string_view::starts_with instead.
  * Determines whether @a str starts with @a prefix.
  */
-inline bool starts_with(const std::string& str, const std::string& prefix) {
-    return str.size() >= prefix.size() &&
-           str.compare(0, prefix.size(), prefix) == 0;
+inline bool TLX_DEPRECATED(starts_with(std::string_view str, std::string_view prefix));
+
+inline bool ends_with(std::string_view str, std::string_view suffix) {
+    return str.ends_with(suffix);
+}
+
+inline bool starts_with(std::string_view str, std::string_view prefix) {
+    return str.starts_with(prefix);
 }
 
 } /* namespace StringTools */

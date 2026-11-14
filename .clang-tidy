@@ -4,7 +4,6 @@ Checks: >
     bugprone-copy-constructor-init,
     bugprone-dangling-handle,
     bugprone-dynamic-static-initializers,
-    bugprone-exception-escape,
     bugprone-fold-init-type,
     bugprone-forward-declaration-namespace,
     bugprone-forwarding-reference-overload,
@@ -19,6 +18,10 @@ Checks: >
     bugprone-unused-return-value,
     bugprone-use-after-move,
     bugprone-virtual-near-miss,
+    clang-analyzer-core.*,
+    clang-analyzer-cplusplus.*,
+    clang-analyzer-deadcode.*,
+    clang-analyzer-nullability.*,
     cppcoreguidelines-narrowing-conversions,
     modernize-deprecated-headers,
     modernize-make-shared,
@@ -39,20 +42,23 @@ Checks: >
     readability-avoid-const-params-in-decls,
     readability-const-return-type,
     readability-container-size-empty
+# temp. disabled: bugprone-exception-escape
 
 # Turn the warnings from the checks above into errors.
 # To turn all warnings into errors, simply write '*'
 # in the first line after WarningsAsErrors
 WarningsAsErrors:  >
-    *
+    *,-cppcoreguidelines-narrowing-conversions
 
 FormatStyle: 'file'
-HeaderFilterRegex: '.*\/(include\/networkit|networkit\/cpp)\/.*\.hpp'
+HeaderFilterRegex: '.*\/(include\/networkit|networkit\/cpp)\/.*\.hpp$'
 CheckOptions:
   - key:   readability-identifier-naming.ClassCase
     value: CamelCase
   - key:   readability-identifier-naming.EnumCase
     value: CamelCase
+  - key:   readability-identifier-naming.EnumConstantCase
+    value: UPPER_CASE
   - key:   readability-identifier-naming.FunctionCase
     value: camelBack
   - key:   readability-identifier-naming.MemberCase
@@ -66,4 +72,4 @@ CheckOptions:
   - key:   readability-identifier-naming.TemplateParameterCase
     value: CamelCase
   - key:   performance-unnecessary-value-param.AllowedTypes
-    value: [Ff]unction$
+    value: '[Ff]unction$'

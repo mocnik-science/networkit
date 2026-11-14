@@ -15,16 +15,15 @@
 
 namespace NetworKit {
 
-Closeness::Closeness(const Graph &G, bool normalized,
-                     const ClosenessVariant variant)
+Closeness::Closeness(const Graph &G, bool normalized, const ClosenessVariant variant)
     : Centrality(G, normalized), variant(variant) {
-    if (variant == ClosenessVariant::standard) {
+    if (variant == ClosenessVariant::STANDARD) {
         checkConnectedComponents();
     }
 }
 
 Closeness::Closeness(const Graph &G, bool normalized, bool checkConnectedness)
-    : Centrality(G, normalized), variant(ClosenessVariant::standard) {
+    : Centrality(G, normalized), variant(ClosenessVariant::STANDARD) {
     if (checkConnectedness)
         checkConnectedComponents();
 }
@@ -41,10 +40,9 @@ void Closeness::checkConnectedComponents() const {
         multipleComponents = cc.numberOfComponents() > 1;
     }
     if (multipleComponents) {
-        throw std::runtime_error(
-            "Error: the standard definition of closeness is not defined on "
-            "disconnected graphs. On disconnected graphs, use the generalized "
-            "definition instead.");
+        throw std::runtime_error("Error: the standard definition of closeness is not defined on "
+                                 "disconnected graphs. On disconnected graphs, use the generalized "
+                                 "definition instead.");
     }
 }
 
@@ -62,7 +60,7 @@ void Closeness::run() {
         dDist.resize(omp_get_max_threads(), std::vector<double>(n));
         heaps.reserve(omp_get_max_threads());
         for (int i = 0; i < omp_get_max_threads(); ++i) {
-            heaps.emplace_back((Compare(dDist[i])));
+            heaps.emplace_back(dDist[i]);
             heaps.back().reserve(n);
         }
         dijkstra();
@@ -76,13 +74,12 @@ void Closeness::run() {
 
 void Closeness::bfs() {
 #pragma omp parallel for schedule(dynamic)
-    for (omp_index u = 0; u < static_cast<omp_index>(G.upperNodeIdBound());
-         ++u) {
+    for (omp_index u = 0; u < static_cast<omp_index>(G.upperNodeIdBound()); ++u) {
         uint8_t &ts_ = ts[omp_get_thread_num()];
         auto &dist_ = uDist[omp_get_thread_num()];
         auto &visited_ = visited[omp_get_thread_num()];
 
-        if (ts_++ == 255 && variant != ClosenessVariant::standard) {
+        if (ts_++ == 255 && variant != ClosenessVariant::STANDARD) {
             ts_ = 1;
             std::fill(visited_.begin(), visited_.end(), 0);
         }
@@ -115,14 +112,13 @@ void Closeness::bfs() {
 
 void Closeness::dijkstra() {
 #pragma omp parallel for schedule(dynamic)
-    for (omp_index u = 0; u < static_cast<omp_index>(G.upperNodeIdBound());
-         ++u) {
+    for (omp_index u = 0; u < static_cast<omp_index>(G.upperNodeIdBound()); ++u) {
         uint8_t &ts_ = ts[omp_get_thread_num()];
         auto &dist_ = dDist[omp_get_thread_num()];
         auto &visited_ = visited[omp_get_thread_num()];
         auto &heap = heaps[omp_get_thread_num()];
 
-        if (ts_++ == 255 && variant != ClosenessVariant::standard) {
+        if (ts_++ == 255 && variant != ClosenessVariant::STANDARD) {
             ts_ = 1;
             std::fill(visited_.begin(), visited_.end(), 0);
         }

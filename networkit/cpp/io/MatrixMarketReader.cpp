@@ -9,30 +9,32 @@
 #include <stdexcept>
 #include <string>
 
+#include <networkit/auxiliary/Log.hpp>
 #include <networkit/io/MatrixMarketReader.hpp>
 
 namespace NetworKit {
 
 namespace {
-    static constexpr char COMMENT_CHAR = '%';
-    static const std::string MAGIC = "%%matrixmarket";
+static constexpr char COMMENT_CHAR = '%';
+static const std::string MAGIC1 = "%matrixmarket";
+static const std::string MAGIC2 = "%" + MAGIC1;
 
-    std::string tolower(const std::string& str) {
-        std::string out;
-        std::transform(str.begin(), str.end(), std::back_inserter(out), ::tolower);
-        return out;
-    }
+std::string tolower(std::string_view str) {
+    std::string out;
+    std::transform(str.begin(), str.end(), std::back_inserter(out), ::tolower);
+    return out;
 }
+} // namespace
 
-CSRMatrix MatrixMarketReader::read(const std::string &path) {
-    std::ifstream in(path);
+CSRMatrix MatrixMarketReader::read(std::string_view path) {
+    std::ifstream in(path.data());
     if (!in.is_open()) {
-        throw std::runtime_error("could not open: " + path);
+        throw std::runtime_error("could not open: " + std::string(path));
     }
     return read(in);
 }
 
-CSRMatrix MatrixMarketReader::read(std::istream& in) {
+CSRMatrix MatrixMarketReader::read(std::istream &in) {
     enum { FIRST_LINE, HEADER, ENTRIES } state = FIRST_LINE;
 
     count nrows = 0, ncols = 0, nzeroes;
@@ -54,8 +56,8 @@ CSRMatrix MatrixMarketReader::read(std::istream& in) {
             format = tolower(format);
             data = tolower(data);
             qualifier = tolower(qualifier);
-            if (magic != MAGIC) {
-                throw std::runtime_error(MAGIC + " not found");
+            if (magic != MAGIC1 && magic != MAGIC2) {
+                throw std::runtime_error(MAGIC1 + " or " + MAGIC2 + " not found");
             }
             if (format != "coordinate") {
                 throw std::runtime_error("Unsupported format: " + format);
@@ -63,7 +65,12 @@ CSRMatrix MatrixMarketReader::read(std::istream& in) {
             if (data == "pattern") {
                 weighted = false;
             } else if (data != "real") {
-                throw std::runtime_error("Unsupported data type: " + data);
+                if (data == "integer")
+                    WARN(
+                        "Weights in NetworKit are stored as double precision floating point number while the given file uses integer weights.\
+                This means that weights bigger than 4.5e15 will be recorded imprecisely.");
+                else
+                    throw std::runtime_error("Unsupported data type: " + data);
             }
 
             if (qualifier == "symmetric") {
@@ -78,7 +85,8 @@ CSRMatrix MatrixMarketReader::read(std::istream& in) {
             // Header: nrows, ncols, nzeroes
             in_line >> nrows >> ncols >> nzeroes;
             if (in_line.fail()) {
-                throw std::runtime_error("expected three non-negative integers in header line:" + line);
+                throw std::runtime_error("expected three non-negative integers in header line:"
+                                         + line);
             }
 
             state = ENTRIES;
@@ -105,13 +113,12 @@ CSRMatrix MatrixMarketReader::read(std::istream& in) {
                 throw std::runtime_error("invalid index: " + std::to_string(j));
             }
 
-            triplets.push_back({i,j,val});
+            triplets.push_back({i, j, val});
 
             if (i != j && symmetric) {
-                triplets.push_back({j,i,val});
+                triplets.push_back({j, i, val});
             }
         }
-
     }
 
     return CSRMatrix(nrows, ncols, triplets);

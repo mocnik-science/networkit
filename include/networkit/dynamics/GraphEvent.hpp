@@ -18,7 +18,6 @@ namespace NetworKit {
 class GraphEvent final {
 
 public:
-
     enum Type {
         NODE_ADDITION,
         NODE_REMOVAL,
@@ -30,17 +29,20 @@ public:
         TIME_STEP
     };
 
-    Type type;  //!< type of graph event
-    node u;         //!< first node parameter
-    node v;        //!< second node parameter
-    edgeweight w;      //!< edge weight parameter
+    Type type;    //!< type of graph event
+    node u;       //!< first node parameter
+    node v;       //!< second node parameter
+    edgeweight w; //!< edge weight parameter
 
     GraphEvent() = default;
 
-    GraphEvent(Type type, node u = none, node v = none, edgeweight w = 1.0);
+    GraphEvent(Type type, node u = none, node v = none, edgeweight w = defaultEdgeWeight);
 
-    static bool compare(GraphEvent a, GraphEvent b);
-    static bool equal(GraphEvent a, GraphEvent b);
+    bool operator==(const GraphEvent &rhs) const noexcept;
+    friend bool operator<(const GraphEvent &a, const GraphEvent &b) noexcept;
+    friend bool operator>(const GraphEvent &a, const GraphEvent &b) noexcept;
+    bool operator<=(const GraphEvent &rhs) const noexcept;
+    bool operator>=(const GraphEvent &rhs) const noexcept;
 
     /**
      * Return string representation.

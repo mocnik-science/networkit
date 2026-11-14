@@ -5,9 +5,11 @@
  *      Author: Eugenio Angriman <angrimae@hu-berlin.de>
  */
 
-// networkit-format
-
 #include <omp.h>
+#include <queue>
+#include <utility>
+
+#include <networkit/auxiliary/Log.hpp>
 #include <networkit/auxiliary/Random.hpp>
 
 #include "GroupClosenessGrowShrinkImpl.hpp"
@@ -22,11 +24,14 @@ GroupClosenessGrowShrinkImpl<WeightType>::GroupClosenessGrowShrinkImpl(const Gra
                                                                        count maxIterations)
     : G(&G), group(std::move(initGroup)), extended(extended),
       insertions(insertions == 0 ? computeConsecutiveInsertions(G, group.size()) : insertions),
-      maxIterations(maxIterations), heap(CompareDistance(distance)),
-      heap_(CompareDistance(distance_)) {
+      maxIterations(maxIterations), heap(distance), heap_(distance_) {
 
     if (G.isDirected())
-        std::runtime_error("Error, this algorithm does not support directed graphs.");
+        throw std::runtime_error("Error, this algorithm does not support directed graphs.");
+
+#if __AVX2__
+    INFO("AVX2 is available.");
+#endif
 }
 
 template <class WeightType>
@@ -35,7 +40,7 @@ count GroupClosenessGrowShrinkImpl<WeightType>::computeConsecutiveInsertions(con
     if (groupSize == 0)
         throw std::runtime_error("Error, empty group.");
 
-    Diameter diam(G, DiameterAlgo::estimatedRange, 0.1);
+    Diameter diam(G, DiameterAlgo::ESTIMATED_RANGE, 0.1);
     diam.run();
     const auto diamOverK =
         static_cast<double>(diam.getDiameter().second) / std::sqrt(static_cast<double>(groupSize));
@@ -66,11 +71,11 @@ void GroupClosenessGrowShrinkImpl<WeightType>::init() {
     for (size_t i = 0; i < group.size(); ++i)
         idxMap.emplace(group[i], i);
 
-#ifdef AVX2_AVAILABLE
+#ifdef __AVX2__
     randVec.resize(n);
 #else
     randVec.resize(K * n);
-#endif // AVX2_AVAILABLE
+#endif // __AVX2__
 
     totalSwaps = 0;
 }
@@ -83,7 +88,7 @@ void GroupClosenessGrowShrinkImpl<WeightType>::initRandomVec() {
             auto tid = omp_get_thread_num();
             auto &curUrng = urngs[tid].get();
             auto &distr = intDistributions[tid];
-#ifdef AVX2_AVAILABLE
+#ifdef __AVX2__
             // Generating two 16-bit random integers per time
             for (index j = 0; j < K; j += 2) {
                 const auto x = distr(curUrng);
@@ -98,7 +103,7 @@ void GroupClosenessGrowShrinkImpl<WeightType>::initRandomVec() {
                 randVec[K * u + j] = static_cast<uint16_t>(x);
                 randVec[K * u + j + 1] = static_cast<uint16_t>(x >> K);
             }
-#endif // AVX2_AVAILABLE
+#endif // __AVX2__
         }
     });
 }
@@ -397,8 +402,11 @@ node GroupClosenessGrowShrinkImpl<WeightType>::estimateHighestDecrement() {
             }
         });
 
-        if (distance[x] && (G->isWeighted() || (!leaf || distance[x] == WeightType{1})))
-            stack[stackSize++] = x;
+        if (distance[x] == 0)
+            continue; // Ignore vertices in the group
+
+        if (G->isWeighted() || extended || (!leaf || distance[x] == WeightType{1}))
+            stack[stackSize++] = x; // Avoid to consider DAG leaves if running non-extended GS
 
     } while (!(G->isWeighted() ? heap.empty() : q.empty()));
 
@@ -413,7 +421,7 @@ node GroupClosenessGrowShrinkImpl<WeightType>::estimateHighestDecrement() {
     // Do 16 packed repetitions at once
     for (size_t i = 0; i < stackSize; ++i) {
         const node x = stack[stackSize - 1 - i];
-#ifdef AVX2_AVAILABLE
+#ifdef __AVX2__
         // 16 randomly generated integers;
         __m256i &x1 = randVec[x].vec;
         // Pulling leaves
@@ -430,16 +438,16 @@ node GroupClosenessGrowShrinkImpl<WeightType>::estimateHighestDecrement() {
                 for (index i = 0; i < K; ++i)
                     randVec[K * x + i] = std::min(randVec[K * x + i], randVec[K * y + i]);
         });
-#endif // AVX2_AVAILABLE
+#endif // __AVX2__
 
         if (isCandidate(x)) {
             sumOfMins[x] = 0;
             for (index j = 0; j < K; ++j) {
-#ifdef AVX2_AVAILABLE
+#ifdef __AVX2__
                 sumOfMins[x] += randVec[x].items[j];
 #else
-                sumOfMins[x] = randVec[K * x + j];
-#endif // AVX2_AVAILABLE
+                sumOfMins[x] += randVec[K * x + j];
+#endif // __AVX2__
             }
 
             if (!sumOfMins[x])

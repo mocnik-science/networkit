@@ -9,9 +9,9 @@ namespace NetworKit {
 
 EdgeListCoverReader::EdgeListCoverReader(node firstNode) : firstNode(firstNode) {}
 
-Cover EdgeListCoverReader::read(const std::string &path, Graph &G) {
+Cover EdgeListCoverReader::read(std::string_view path, Graph &G) {
     std::ifstream file;
-    file.open(path);
+    file.open(path.data());
     if (!file.good()) {
         throw std::runtime_error("unable to read from file");
     }
@@ -20,8 +20,8 @@ Cover EdgeListCoverReader::read(const std::string &path, Graph &G) {
     std::string line;
     index omega = 0;
 
-    while(std::getline(file, line)) {
-        if (line.substr(0, 1) != "#") {
+    while (std::getline(file, line)) {
+        if (!line.starts_with('#')) {
             std::stringstream linestream(line);
             index c, v;
             linestream >> v;
@@ -33,7 +33,7 @@ Cover EdgeListCoverReader::read(const std::string &path, Graph &G) {
 
             while (linestream >> c) {
                 if (c > omega) {
-                    communities.setUpperBound(c+1);
+                    communities.setUpperBound(c + 1);
                     omega = c;
                 }
 

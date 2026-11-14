@@ -8,12 +8,10 @@
 #ifndef NETWORKIT_GENERATORS_DYNAMIC_DGS_PARSER_HPP_
 #define NETWORKIT_GENERATORS_DYNAMIC_DGS_PARSER_HPP_
 
-#include <iterator>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-#include <networkit/auxiliary/StringTools.hpp>
 #include <networkit/generators/DynamicGraphSource.hpp>
 #include <networkit/structures/Partition.hpp>
 
@@ -39,7 +37,8 @@ public:
     void evaluateClusterings(const std::string &path, const Partition &clustering);
 
 private:
-    bool graphInitialized;  //!< true if initializeGraph has been called and graph has been properly initialized
+    bool graphInitialized; //!< true if initializeGraph has been called and graph has been properly
+                           //!< initialized
     std::unordered_map<std::string, node> nodeNames;
     std::vector<std::string> nodeDates;
     std::ifstream dgsFile;

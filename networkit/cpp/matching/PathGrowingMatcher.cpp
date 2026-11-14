@@ -5,21 +5,28 @@
  *      Author: Henning
  */
 
-#include <networkit/auxiliary/BucketPQ.hpp>
+#include <networkit/auxiliary/BucketPriorityQueue.hpp>
 #include <networkit/matching/PathGrowingMatcher.hpp>
 
 namespace NetworKit {
 
-PathGrowingMatcher::PathGrowingMatcher(const Graph& G): Matcher(G) {
-    if (G.numberOfSelfLoops() > 0) {
-        throw std::invalid_argument("G has self-loops and cannot be processed");
-    }
+PathGrowingMatcher::PathGrowingMatcher(const Graph &G) : Matcher(G) {
+    checkInput();
 }
 
-PathGrowingMatcher::PathGrowingMatcher(const Graph& G, const std::vector<double>& edgeScores): Matcher(G, edgeScores) {
-    if (G.numberOfSelfLoops() > 0) {
-        throw std::invalid_argument("G has self-loops and cannot be processed");
-    }
+PathGrowingMatcher::PathGrowingMatcher(const Graph &G, const std::vector<double> &edgeScores)
+    : Matcher(G, edgeScores) {
+    checkInput();
+}
+
+void PathGrowingMatcher::checkInput() const {
+    if (G->isDirected())
+        throw std::invalid_argument(
+            "The input graph is directed, this algorithm only supports undirected graphs.");
+
+    if (G->numberOfSelfLoops() > 0)
+        throw std::invalid_argument("The input graph has self-loops, this algorithm only supports "
+                                    "graphs without self-loops. ");
 }
 
 void PathGrowingMatcher::run() {
@@ -31,7 +38,7 @@ void PathGrowingMatcher::run() {
     bool takeM1 = true;
 
     // PQ to retrieve vertices with degree > 0 quickly
-    int64_t minKey = -((int64_t) G->numberOfNodes());
+    int64_t minKey = -((int64_t)G->numberOfNodes());
     int64_t maxKey = 0;
     Aux::BucketPQ bpq(z, minKey, maxKey);
 
@@ -86,13 +93,11 @@ void PathGrowingMatcher::run() {
                 });
             }
 
-
             if (takeM1) {
                 // add edge to m1
                 m1.match(v, bestNeighbor);
                 takeM1 = false;
-            }
-            else {
+            } else {
                 // add edge to m2
                 m2.match(v, bestNeighbor);
                 takeM1 = true;
@@ -108,8 +113,7 @@ void PathGrowingMatcher::run() {
                         // singleton node can be removed
                         bpq.remove(u);
                         alive[u] = false;
-                    }
-                    else {
+                    } else {
                         bpq.changeKey(-degrees.at(u), u);
                     }
                 }
@@ -123,19 +127,15 @@ void PathGrowingMatcher::run() {
     }
 
     // return the heavier one of the two
-    edgeweight weight1 {0};
+    edgeweight weight1{0};
     if (edgeScoresAsWeights) {
-        G->forEdges([&](node, node, edgeid eid){
-            weight1 += edgeScores.at(eid);
-        });
+        G->forEdges([&](node, node, edgeid eid) { weight1 += edgeScores.at(eid); });
     } else {
         weight1 = m1.weight(*G);
     }
     edgeweight weight2 = 0.;
     if (edgeScoresAsWeights) {
-        G->forEdges([&](node, node, edgeid eid){
-            weight2 += edgeScores.at(eid);
-        });
+        G->forEdges([&](node, node, edgeid eid) { weight2 += edgeScores.at(eid); });
     } else {
         weight2 = m2.weight(*G);
     }

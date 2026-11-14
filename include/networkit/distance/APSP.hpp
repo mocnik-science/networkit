@@ -14,8 +14,6 @@
 #include <networkit/distance/SSSP.hpp>
 #include <networkit/graph/Graph.hpp>
 
-#include <tlx/define/deprecated.hpp>
-
 namespace NetworKit {
 
 /**
@@ -24,7 +22,7 @@ namespace NetworKit {
  */
 class APSP : public Algorithm {
 
-  public:
+public:
     /**
      * Creates the APSP class for @a G.
      *
@@ -41,17 +39,12 @@ class APSP : public Algorithm {
     void run() override;
 
     /**
-     * @return string representation of algorithm and parameters.
-     */
-    std::string TLX_DEPRECATED(toString() const override);
-
-    /**
      * Returns a vector of weighted distances between node pairs.
      *
      * @return The shortest-path distances from each node to any other node in
      * the graph.
      */
-    std::vector<std::vector<edgeweight>> getDistances() const {
+    const std::vector<std::vector<edgeweight>> &getDistances() const {
         assureFinished();
         return distances;
     }
@@ -65,11 +58,6 @@ class APSP : public Algorithm {
         assureFinished();
         return distances[u][v];
     }
-
-    /**
-     * @return True if algorithm can run multi-threaded.
-     */
-    bool TLX_DEPRECATED(isParallel() const override) { return true; }
 
 protected:
     const Graph &G;

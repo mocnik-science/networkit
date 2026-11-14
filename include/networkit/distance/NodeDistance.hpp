@@ -19,8 +19,7 @@ namespace NetworKit {
 class NodeDistance {
 
 protected:
-
-    const Graph* G;
+    const Graph *G;
 
 public:
     /**
@@ -28,7 +27,7 @@ public:
      *
      * @param G The graph.
      */
-    NodeDistance(const Graph& G) : G(&G) {}
+    NodeDistance(const Graph &G) : G(&G) {}
 
     /** Default destructor */
     virtual ~NodeDistance() = default;
@@ -48,7 +47,7 @@ public:
      * Returns the distances between all connected pairs of nodes.
      * @return Vector containing the distances between all connected pairs of nodes.
      */
-    virtual std::vector<double> getEdgeScores() = 0;
+    virtual const std::vector<double> &getEdgeScores() const = 0;
 };
 
 } /* namespace NetworKit */

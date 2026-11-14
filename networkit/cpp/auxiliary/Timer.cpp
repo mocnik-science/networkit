@@ -25,7 +25,8 @@ Timer::my_steady_clock::time_point Timer::stop() noexcept {
 }
 
 std::chrono::duration<uint64_t, std::milli> Timer::elapsed() const noexcept {
-    return std::chrono::duration_cast<std::chrono::duration<uint64_t, std::milli> >(stopTimeOrNow() - started);
+    return std::chrono::duration_cast<std::chrono::duration<uint64_t, std::milli>>(stopTimeOrNow()
+                                                                                   - started);
 }
 
 Timer::my_steady_clock::time_point Timer::startTime() const noexcept {
@@ -41,11 +42,15 @@ uint64_t Timer::elapsedMilliseconds() const noexcept {
 }
 
 uint64_t Timer::elapsedMicroseconds() const noexcept {
-    return std::chrono::duration_cast<std::chrono::duration<uint64_t, std::micro>>(stopTimeOrNow() - started).count();
+    return std::chrono::duration_cast<std::chrono::duration<uint64_t, std::micro>>(stopTimeOrNow()
+                                                                                   - started)
+        .count();
 }
 
 uint64_t Timer::elapsedNanoseconds() const noexcept {
-    return std::chrono::duration_cast<std::chrono::duration<uint64_t, std::nano>>(stopTimeOrNow() - started).count();
+    return std::chrono::duration_cast<std::chrono::duration<uint64_t, std::nano>>(stopTimeOrNow()
+                                                                                  - started)
+        .count();
 }
 
 std::string Timer::elapsedTag() const {
@@ -58,9 +63,7 @@ Timer::my_steady_clock::time_point Timer::stopTimeOrNow() const noexcept {
     return running ? std::chrono::steady_clock::now() : stopped;
 }
 
-LoggingTimer::LoggingTimer(const std::string &label, Aux::Log::LogLevel level)
-    : level(level)
-{
+LoggingTimer::LoggingTimer(std::string_view label, Aux::Log::LogLevel level) : level(level) {
     if (!Aux::Log::isLogLevelEnabled(level))
         return;
 
@@ -78,7 +81,7 @@ LoggingTimer::~LoggingTimer() {
     if (!label.empty())
         ss << '"' << label << "\" ";
 
-    ss << "ran for " << (elapsedMicroseconds() * 1e-3) << " ms";
+    ss << "ran for " << (static_cast<double>(elapsedMicroseconds()) * 1e-3) << " ms";
 
     LOG_AT(level, ss.str());
 }

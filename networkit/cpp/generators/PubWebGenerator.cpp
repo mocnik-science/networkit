@@ -4,9 +4,9 @@
  *  Created on: Apr 10, 2013
  *      Author: Henning
  */
-// networkit-format
 
 #include <cmath>
+#include <queue>
 #include <set>
 
 #include <networkit/auxiliary/Random.hpp>
@@ -63,7 +63,7 @@ void PubWebGenerator::determineNeighbors(Graph &g) {
 
             if (isInRange(sqrDist)) {
                 edge e = std::make_pair(std::min(u, v), std::max(u, v));
-                pq.push(std::make_pair(-sqrDist, e));
+                pq.emplace(-sqrDist, e);
             }
         });
 
@@ -73,7 +73,7 @@ void PubWebGenerator::determineNeighbors(Graph &g) {
             const auto currentBest = pq.top();
             pq.pop();
 
-            if (eligibleEdges.count(currentBest.second) > 0) {
+            if (eligibleEdges.contains(currentBest.second)) {
                 // edge is already marked => insert it
                 edgeweight ew = BASE_WEIGHT / -currentBest.first;
                 g.addEdge(currentBest.second.first, currentBest.second.second, ew);
@@ -115,13 +115,13 @@ void PubWebGenerator::chooseDenseAreaSizes() {
 // compute number of nodes per cluster, each cluster has approx. same density
 void PubWebGenerator::chooseClusterSizes() {
     auto f = std::accumulate(denseAreaXYR.begin(), denseAreaXYR.end(), 0.0,
-                             [](coordinate sum, circle c) { return sum + pow(c.rad, 1.5); });
+                             [](coordinate sum, circle c) { return sum + std::pow(c.rad, 1.5); });
 
     f = (n * (numDenseAreas / (numDenseAreas + 2.0))) / f;
 
     numPerArea.reserve(numDenseAreas);
     for (auto circle : denseAreaXYR) {
-        numPerArea.emplace_back(std::round(f * pow(circle.rad, 1.5)));
+        numPerArea.emplace_back(std::round(f * std::pow(circle.rad, 1.5)));
     }
 }
 

@@ -5,11 +5,12 @@
  *      Author: Eugenio Angriman <angrimae@hu-berlin.de>
  */
 
-// networkit-format
-
 #ifndef NETWORKIT_DISTANCE_BIDIRECTIONAL_DIJKSTRA_HPP_
 #define NETWORKIT_DISTANCE_BIDIRECTIONAL_DIJKSTRA_HPP_
 
+#include <stack>
+
+#include <networkit/auxiliary/VectorComparator.hpp>
 #include <networkit/distance/STSP.hpp>
 
 #include <tlx/container/d_ary_addressable_int_heap.hpp>
@@ -24,26 +25,25 @@ namespace NetworKit {
 class BidirectionalDijkstra final : public STSP {
 
 public:
-    // Inherit the constructors of STSP.
-    using STSP::STSP;
+    /**
+     * Creates the BidirectionalDijkstra class for a graph @a G, source node @a source, and
+     * target node @a target.
+     *
+     * @param G The graph.
+     * @param source The source node.
+     * @param target The target node.
+     * @param storePred If true, the algorithm will also store the predecessors
+     * and reconstruct a shortest path from @a source and @a target.
+     */
+    BidirectionalDijkstra(const Graph &G, node source, node target, bool storePred = true)
+        : STSP(G, source, target, storePred) {}
 
     /*
      * Runs the bidirectional Dijkstra algorithm.
      */
     void run() override;
 
-    /*
-     * Returns the distance from the source to the target node.
-     *
-     * @return edgeweight Distance from the source to the target node.
-     */
-    edgeweight getDistance() const override {
-        assureFinished();
-        return stDist;
-    }
-
 private:
-    edgeweight stDist;
     std::vector<edgeweight> dist1;
     std::vector<edgeweight> dist2;
     std::vector<node> predT;
@@ -52,15 +52,6 @@ private:
     static constexpr uint8_t ballMask = uint8_t(1) << 7;
 
     void buildPaths(std::stack<std::deque<node>> &pathStack);
-
-    struct Compare {
-    public:
-        Compare(const std::vector<edgeweight> &dist) : dist(dist) {}
-        bool operator()(node u, node v) { return dist[u] < dist[v]; }
-
-    private:
-        const std::vector<edgeweight> &dist;
-    };
 
     struct CompareST {
     public:
@@ -72,8 +63,8 @@ private:
         const std::vector<edgeweight> &d1, &d2;
     };
 
-    tlx::d_ary_addressable_int_heap<node, 2, Compare> h1{Compare(dist1)};
-    tlx::d_ary_addressable_int_heap<node, 2, Compare> h2{Compare(dist2)};
+    tlx::d_ary_addressable_int_heap<node, 2, Aux::LessInVector<edgeweight>> h1{dist1};
+    tlx::d_ary_addressable_int_heap<node, 2, Aux::LessInVector<edgeweight>> h2{dist2};
     tlx::d_ary_addressable_int_heap<node, 2, CompareST> stH{CompareST(dist1, dist2)};
 };
 } // namespace NetworKit

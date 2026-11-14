@@ -18,17 +18,13 @@ namespace NetworKit {
 class RandomEdgeScore final : public EdgeScore<double> {
 
 public:
-
     /**
      * Creates a new instance of the Random edge score.
      */
-    RandomEdgeScore(const Graph& G);
-
-    double score(edgeid eid) override;
-    double score(node u, node v) override;
+    RandomEdgeScore(const Graph &G);
     void run() override;
 };
 
-}
+} // namespace NetworKit
 /* namespace NetworKit */
 #endif // NETWORKIT_SPARSIFICATION_RANDOM_EDGE_SCORE_HPP_

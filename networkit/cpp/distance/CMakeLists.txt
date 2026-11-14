@@ -3,7 +3,6 @@ networkit_add_module(distance
     APSP.cpp
     AdamicAdarDistance.cpp
     AlgebraicDistance.cpp
-    BFS.cpp
     BidirectionalBFS.cpp
     BidirectionalDijkstra.cpp
     CommuteTimeDistance.cpp
@@ -16,22 +15,25 @@ networkit_add_module(distance
     HopPlotApproximation.cpp
     IncompleteDijkstra.cpp
     JaccardDistance.cpp
+    MultiTargetBFS.cpp
+    MultiTargetDijkstra.cpp
     NeighborhoodFunction.cpp
     NeighborhoodFunctionApproximation.cpp
     NeighborhoodFunctionHeuristic.cpp
+    PrunedLandmarkLabeling.cpp
     ReverseBFS.cpp
     SPSP.cpp
-    SSSP.cpp
     Volume.cpp
     )
 
 networkit_module_link_modules(distance
-        algebraic auxiliary base components graph structures)
+        algebraic auxiliary components graph structures)
 
 networkit_add_module(dyn_distance
     DynAPSP.cpp
     DynBFS.cpp
     DynDijkstra.cpp
+    DynPrunedLandmarkLabeling.cpp
     DynSSSP.cpp
     )
 

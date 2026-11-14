@@ -1,4 +1,3 @@
-// networkit-format
 
 #include <networkit/io/CoverReader.hpp>
 
@@ -7,9 +6,9 @@
 
 namespace NetworKit {
 
-Cover CoverReader::read(const std::string &path, Graph &G) {
+Cover CoverReader::read(std::string_view path, Graph &G) {
     std::ifstream file;
-    file.open(path);
+    file.open(path.data());
     if (!file.good()) {
         throw std::runtime_error("unable to read from file");
     }
@@ -19,7 +18,7 @@ Cover CoverReader::read(const std::string &path, Graph &G) {
     node current;
 
     while (std::getline(file, line)) {
-        if (line.substr(0, 1) != "#") {
+        if (!line.starts_with('#')) {
             communities.setUpperBound(i + 1);
             std::stringstream linestream(line);
             while (linestream >> current) {

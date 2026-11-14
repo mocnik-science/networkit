@@ -5,8 +5,6 @@
  *      Author: forigem
  */
 
-// networkit-format
-
 #ifndef NETWORKIT_IO_SNAP_EDGE_LIST_PARTITION_READER_HPP_
 #define NETWORKIT_IO_SNAP_EDGE_LIST_PARTITION_READER_HPP_
 
@@ -23,7 +21,7 @@ namespace NetworKit {
  */
 class SNAPEdgeListPartitionReader final {
 public:
-    Cover read(const std::string &path, std::unordered_map<node, node> &mapNodeIds, Graph &G);
+    Cover read(std::string_view path, std::unordered_map<node, node> &mapNodeIds, Graph &G);
 };
 
 } /* namespace NetworKit */

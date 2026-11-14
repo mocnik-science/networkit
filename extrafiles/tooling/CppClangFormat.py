@@ -10,7 +10,7 @@ a change is necessary.
 import filecmp
 import nktooling as nkt
 import tempfile
-import sys
+import re
 import shutil
 import subprocess
 import os
@@ -29,15 +29,33 @@ def isSupported(cmd):
 	if shutil.which(cmd) is None:
 		return False
 	# Read major revision number from "clang-format version XX.XX.XX ... "
-	version = str(subprocess.check_output([cmd, "--version"],
-		universal_newlines=True, env=getEnv())).strip().split()[2].split('.')[0]
-	return int(version) >= nkt.MIN_CLANG_FORMAT_VERSION
+	version_output = str(
+		subprocess.check_output([cmd, "--version"], universal_newlines=True, env=getEnv())
+	)
+
+	# Examples the regex handles:
+	#   "Ubuntu clang-format version 17.0.6 (++2023...)"
+	major_version_match = re.search(r'\bversion\s+(\d+)', version_output, re.IGNORECASE)
+	if not major_version_match:
+		# Fallback: grab the first dotted version like 17.0.6
+		major_version_match = re.search(r'\b(\d+)\.\d+(?:\.\d+)?\b', version_output)
+
+	if major_version_match:
+		try:
+			found_version = int(major_version_match.group(1))
+			return found_version == nkt.CLANG_FORMAT_VERSION
+		except ValueError:
+			pass
+
+	return False
 
 
 def findClangFormat():
 	"""Tries to find clang-format-XXX variants within the path"""
+	if "NETWORKIT_OVERRIDE_CLANG_FORMAT" in os.environ:
+		return os.environ["NETWORKIT_OVERRIDE_CLANG_FORMAT"]
 	cmd = "clang-format"
-	allowed = [cmd] + [cmd + "-" + str(x) for x in range(nkt.MIN_CLANG_FORMAT_VERSION, nkt.MAX_CLANG_FORMAT_VERSION + 1)]
+	allowed = [cmd] + [cmd + "-" + str(nkt.CLANG_FORMAT_VERSION)]
 	for candidate in allowed:
 		if isSupported(candidate):
 			if nkt.isVerbose():
@@ -49,16 +67,10 @@ def findClangFormat():
 
 	raise FileNotFoundError("clang-format binary not found. We searched for:\n " + "\n ".join(allowed))
 
-def subscribedToFormat(filename, pattern = "networkit-format"):
-	"""If pattern is present within the file, this file subscribed to auto formatting."""
-	with open(filename, 'r') as file:
-		return any( ((pattern in line) for line in file) )
-
-def runClangFormat(inputFilename, outputFilename, clangFormatBinary = 'clang-format-8'):
+def runClangFormat(inputFilename, outputFilename, clangFormatBinary = f"clang-format-{nkt.CLANG_FORMAT_VERSION}"):
 	"""Execute clang-format onto inputFilename and stores the result in outputFilename"""
 	with open(outputFilename, "w") as outfile:
 		subprocess.call([clangFormatBinary, '-style=file', inputFilename], stdout=outfile)
-
 
 nkt.setup()
 
@@ -66,15 +78,11 @@ nkt.setup()
 os.chdir(nkt.getNetworKitRoot())
 
 numberNonCompliant = 0
-numberFileSkipped = 0
 
 clangFormatCommand = findClangFormat()
 with tempfile.TemporaryDirectory(dir=nkt.getNetworKitRoot()) as tempDir:
 	files = nkt.getCXXFiles()
 	for file in files:
-		if not subscribedToFormat(file):
-			numberFileSkipped += 1
-			continue
 
 		tempFile = os.path.join(tempDir, 'cfOutput')
 		runClangFormat(file, tempFile, clangFormatCommand)
@@ -89,8 +97,7 @@ with tempfile.TemporaryDirectory(dir=nkt.getNetworKitRoot()) as tempDir:
 			if not nkt.isReadonly():
 				os.replace(tempFile, file)
 
-print("Scanned %d files (skipped %d files without subscription). Non-compliant files: %d." %
-	  (len(files), numberFileSkipped, numberNonCompliant))
+print(f"Scanned {len(files)} files. Non-compliant files: {numberNonCompliant}.")
 
 if numberNonCompliant > 0:
 	nkt.failIfReadonly(__file__)

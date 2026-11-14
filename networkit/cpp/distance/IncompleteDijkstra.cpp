@@ -5,8 +5,6 @@
  *      Author: dhoske
  */
 
-// networkit-format
-
 #include <limits>
 #include <type_traits>
 
@@ -16,7 +14,7 @@ namespace NetworKit {
 
 IncompleteDijkstra::IncompleteDijkstra(const Graph *G, const std::vector<node> &sources,
                                        const std::unordered_set<node> *explored)
-    : G(G), explored(explored), heap(CompareDistance(&dists)) {
+    : G(G), explored(explored), heap(dists) {
     if (!G) {
         throw std::invalid_argument("G is null");
     }

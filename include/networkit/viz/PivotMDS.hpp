@@ -21,7 +21,7 @@ namespace NetworKit {
  * Implementation of PivotMDS proposed by Brandes and Pich.
  */
 class PivotMDS final : public GraphLayoutAlgorithm<double> {
-  public:
+public:
     /**
      * Constructs a PivotMDS object for the given @a graph. The algorithm should
      * embed the graph in @a dim dimensions using @a numPivots pivots.
@@ -41,7 +41,7 @@ class PivotMDS final : public GraphLayoutAlgorithm<double> {
      */
     void run() override;
 
-  private:
+private:
     count dim;
     count numPivots;
 
@@ -55,8 +55,7 @@ class PivotMDS final : public GraphLayoutAlgorithm<double> {
      * stored in @a eigenvector and
      * @a eigenvalue.
      */
-    void powerMethod(const CSRMatrix &mat, count n, Vector &eigenvector,
-                     double &eigenvalue);
+    void powerMethod(const CSRMatrix &mat, count n, Vector &eigenvector, double &eigenvalue);
 };
 
 } /* namespace NetworKit */

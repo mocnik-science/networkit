@@ -4,7 +4,6 @@
  *  Created on: Apr 10, 2013
  *      Author: Henning
  */
-// networkit-format
 
 #include <networkit/community/ClusteringGenerator.hpp>
 #include <networkit/viz/PostscriptWriter.hpp>
@@ -142,10 +141,10 @@ void PostscriptWriter::init(std::ofstream &file) const {
 }
 
 void PostscriptWriter::write(const Graph &g, const std::vector<Point2D> &coordinates,
-                             const Partition &clustering, const std::string &path) {
+                             const Partition &clustering, std::string_view path) {
     assert(g.upperNodeIdBound() == coordinates.size());
 
-    std::ofstream file(path);
+    std::ofstream file(path.data());
     init(file);
     computeBoundaryBox(coordinates);
 
@@ -159,7 +158,7 @@ void PostscriptWriter::write(const Graph &g, const std::vector<Point2D> &coordin
 }
 
 void PostscriptWriter::write(const Graph &g, const std::vector<Point2D> &coordinates,
-                             const std::string &path) {
+                             std::string_view path) {
     assert(g.upperNodeIdBound() == coordinates.size());
 
     ClusteringGenerator gen;

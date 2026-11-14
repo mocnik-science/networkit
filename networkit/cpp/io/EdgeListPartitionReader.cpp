@@ -9,11 +9,11 @@
 
 namespace NetworKit {
 
-EdgeListPartitionReader::EdgeListPartitionReader(node firstNode, char sepChar) : firstNode(firstNode), sepChar(sepChar) {
-}
+EdgeListPartitionReader::EdgeListPartitionReader(node firstNode, char sepChar)
+    : firstNode(firstNode), sepChar(sepChar) {}
 
-Partition EdgeListPartitionReader::read(const std::string &path) {
-    std::ifstream file(path);
+Partition EdgeListPartitionReader::read(std::string_view path) {
+    std::ifstream file(path.data());
 
     // check if file readable
     if (!file) {
@@ -23,7 +23,7 @@ Partition EdgeListPartitionReader::read(const std::string &path) {
     std::string line;
     index newOmega = 0;
     Partition zeta(0); // start without nodes
-    while(std::getline(file, line)) {
+    while (std::getline(file, line)) {
         std::vector<std::string> split = Aux::StringTools::split(line, sepChar);
         if (split[0] != "#") {
             index c = std::atoi(split[1].c_str());
@@ -39,7 +39,7 @@ Partition EdgeListPartitionReader::read(const std::string &path) {
         }
     }
 
-    zeta.setUpperBound(newOmega+1);
+    zeta.setUpperBound(newOmega + 1);
     return zeta;
 }
 

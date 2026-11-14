@@ -10,22 +10,17 @@
 
 #include <networkit/independentset/IndependentSetFinder.hpp>
 
-
 namespace NetworKit {
 
 /**
  * @ingroup independentset
  *
- * Luby's parallel independent set algorithm.
+ * Luby's parallel independent set algorithm for undirected graphs.
  */
 class Luby final : public IndependentSetFinder {
 
 public:
-
-    // FIXME: check correctness of implementation
-    std::vector<bool> run(const Graph& G) override;
-
-    std::string TLX_DEPRECATED(toString() const override);
+    std::vector<bool> run(const Graph &G) override;
 };
 
 } /* namespace NetworKit */

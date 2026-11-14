@@ -3,7 +3,6 @@
  *
  * Author: Hung Tran <htran@ae.cs.uni-frankfurt.de>
  */
-// networkit-format
 #include <algorithm>
 #include <cassert>
 #include <numeric>
@@ -106,7 +105,7 @@ nodepair_vector CurveballAdjacencyList::getEdges() const {
     edges.reserve(degreeCount);
     for (node nodeid = 0; nodeid < static_cast<node>(offsets.size()); nodeid++) {
         for (auto it = cbegin(nodeid); it != cend(nodeid); it++) {
-            edges.push_back(std::make_pair(nodeid, *it));
+            edges.emplace_back(nodeid, *it);
         }
     }
 
@@ -154,29 +153,29 @@ void CurveballMaterialization::toGraphParallel(Graph &G) {
         }
     });
 
-    G.outEdges.swap(new_outEdges);
+    G.removeAllEdges();
 
     // Reserve the space
-    G.parallelForNodes([&](node v) { G.outEdges[v].reserve(outDeg[v] + missingEdgesCounts[v]); });
+    G.parallelForNodes([&](node v) {
+        G.preallocateUndirected(v, outDeg[v] + missingEdgesCounts[v]);
+        for (index j = 0; j < new_outEdges[v].size(); j++) {
+            G.addPartialEdge(unsafe, v, new_outEdges[v][j]);
+        }
+    });
 
     // Second half of the edges
     G.forNodes([&](node v) {
         for (count neighbor_id = 0; neighbor_id < outDeg[v]; neighbor_id++) {
-            const node u = G.outEdges[v][neighbor_id];
-            G.outEdges[u].push_back(v);
+            const node u = G.getIthNeighbor(v, neighbor_id);
+            G.addPartialEdge(unsafe, u, v);
         }
     });
 
-    // TODO: is the networkit adjacency list even sorted for the neighbours? if
-    // not omit this
-    // Sort neighbours
-    G.parallelForNodes([&](node v) { std::sort(G.outEdges[v].begin(), G.outEdges[v].end()); });
-
     // Set number of self-loops
-    G.storedNumberOfSelfLoops = 0;
+    G.setNumberOfSelfLoops(unsafe, 0);
 
     // Set numberOfEdges
-    G.m = adjacencyList.numberOfEdges() / 2;
+    G.setEdgeCount(unsafe, adjacencyList.numberOfEdges() / 2);
 
     // Shrink to fit
     G.shrinkToFit();
@@ -206,29 +205,29 @@ void CurveballMaterialization::toGraphSequential(Graph &G) {
         }
     });
 
-    G.outEdges.swap(new_outEdges);
+    G.removeAllEdges();
 
     // Reserve the space
-    G.forNodes([&](node v) { G.outEdges[v].reserve(outDeg[v] + missingEdgesCounts[v]); });
+    G.forNodes([&](node v) {
+        G.preallocateUndirected(v, outDeg[v] + missingEdgesCounts[v]);
+        for (index j = 0; j < new_outEdges[v].size(); j++) {
+            G.addPartialEdge(unsafe, v, new_outEdges[v][j]);
+        }
+    });
 
     // Second half of the edges
     G.forNodes([&](node v) {
         for (count neighbor_id = 0; neighbor_id < outDeg[v]; neighbor_id++) {
-            const node u = G.outEdges[v][neighbor_id];
-            G.outEdges[u].push_back(v);
+            const node u = G.getIthNeighbor(v, neighbor_id);
+            G.addPartialEdge(unsafe, u, v);
         }
     });
 
-    // TODO: is the networkit adjacency list even sorted for the neighbours? if
-    // not omit this
-    // Sort neighbours
-    G.forNodes([&](node v) { std::sort(G.outEdges[v].begin(), G.outEdges[v].end()); });
-
     // Set number of self-loops
-    G.storedNumberOfSelfLoops = 0;
+    G.setNumberOfSelfLoops(unsafe, 0);
 
     // Set numberOfEdges
-    G.m = adjacencyList.numberOfEdges() / 2;
+    G.setEdgeCount(unsafe, adjacencyList.numberOfEdges() / 2);
 
     // Shrink to fit
     G.shrinkToFit();
@@ -386,7 +385,6 @@ void CurveballIM::run(const trade_vector &trades) {
     else
         restructureGraph(trades);
 
-    count trade_count = 0;
     neighbour_vector common_neighbours;
     neighbour_vector disjoint_neighbours;
 
@@ -510,8 +508,6 @@ void CurveballIM::run(const trade_vector &trades) {
         // Do not forget edge between u and v
         if (shared)
             update(u, v);
-
-        trade_count++;
     }
 
     hasRun = true;

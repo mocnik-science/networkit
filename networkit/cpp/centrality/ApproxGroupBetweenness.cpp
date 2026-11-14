@@ -1,5 +1,5 @@
 /*
- * ApproxGroupBetweenness.h
+ * ApproxGroupBetweenness.cpp
  *
  *  Created on: 13.03.2018
  *      Author: Marvin Pogoda
@@ -8,25 +8,22 @@
 #include <cmath>
 #include <omp.h>
 
-#include <networkit/auxiliary/BucketPQ.hpp>
+#include <networkit/auxiliary/BucketPriorityQueue.hpp>
 #include <networkit/auxiliary/Random.hpp>
 #include <networkit/centrality/ApproxGroupBetweenness.hpp>
 #include <networkit/distance/BFS.hpp>
-#include <networkit/distance/SSSP.hpp>
 #include <networkit/graph/GraphTools.hpp>
 
 namespace NetworKit {
 
-ApproxGroupBetweenness::ApproxGroupBetweenness(const Graph &G,
-                                               const count groupSize,
+ApproxGroupBetweenness::ApproxGroupBetweenness(const Graph &G, const count groupSize,
                                                const double epsilon)
     : G(G), n(G.upperNodeIdBound()), groupSize(groupSize), epsilon(epsilon) {
     if (G.isDirected()) {
         throw std::runtime_error("Error: the graph must be undirected.");
     }
     if (groupSize == 0 || groupSize >= G.upperNodeIdBound()) {
-        throw std::runtime_error(
-            "Error: the group size must be between 1 and n-1.");
+        throw std::runtime_error("Error: the group size must be between 1 and n-1.");
     }
     if (epsilon <= 0) {
         throw std::runtime_error("Error: epsilon must be greater than 0.");
@@ -39,9 +36,10 @@ void ApproxGroupBetweenness::run() {
     std::vector<int64_t> bucketInitializer(n);
     std::vector<std::vector<node>> incidencyList(n);
     std::vector<count> hyperEdges;
-    count samples = groupSize * log(n) / (epsilon * epsilon);
+    const auto samples = static_cast<count>(
+        std::ceil(static_cast<double>(groupSize) * std::log(n) / (epsilon * epsilon)));
     std::vector<std::vector<count>> hyperEdgesPerSample(samples);
-    Aux::BucketPQ nodeDegrees(bucketInitializer, -samples, 1);
+    Aux::BucketPQ nodeDegrees(bucketInitializer, -static_cast<int64_t>(samples), 1);
     std::vector<BFS> bfss(omp_get_max_threads(), BFS(G, 0, true, true));
 
 #pragma omp parallel for
@@ -70,7 +68,7 @@ void ApproxGroupBetweenness::run() {
         assert(dist);
         hyperEdgesPerSample[l].reserve(dist - 1);
         for (count i = 0; i < dist - 1; ++i) {
-            auto predecessors = bfs.getPredecessors(t);
+            const auto &predecessors = bfs.getPredecessors(t);
             t = predecessors[Aux::Random::integer(predecessors.size() - 1)];
             hyperEdgesPerSample[l].push_back(t);
         }
@@ -93,7 +91,7 @@ void ApproxGroupBetweenness::run() {
     }
     // Build nodeDegrees
     for (node i = 0; i < n; i++)
-        nodeDegrees.changeKey(tempDegrees[i], i);
+        nodeDegrees.changeKey(static_cast<int64_t>(tempDegrees[i]), i);
 
     // Extract nodes with highest degrees.
     std::vector<count> degreeDecrease(n);
@@ -112,7 +110,7 @@ void ApproxGroupBetweenness::run() {
             degree += degreeDecrease[v];
             degreeDecrease[v] = 0;
             // Check if v still has max degree
-            nodeDegrees.changeKey(degree, v);
+            nodeDegrees.changeKey(static_cast<int64_t>(degree), v);
             elem = nodeDegrees.extractMin();
             v = elem.second;
             degree = elem.first;

@@ -39,7 +39,7 @@ public:
      *
      * @return A vector of graph events.
      */
-    std::vector<GraphEvent> getEdits() const;
+    const std::vector<GraphEvent> &getEdits() const;
 
     /**
      * Get the required number of edits.
@@ -92,6 +92,7 @@ public:
      * @return The number of edge weight updates.
      */
     count getNumberOfEdgeWeightUpdates() const;
+
 private:
     const Graph *G1, *G2;
     std::vector<GraphEvent> edits;

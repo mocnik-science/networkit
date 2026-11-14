@@ -9,22 +9,22 @@
 
 namespace NetworKit {
 
-Partition PartitionReader::read(const std::string &path) {
+Partition PartitionReader::read(std::string_view path) {
 
-    std::ifstream file(path);
+    std::ifstream file(path.data());
 
     // check if file readable
     if (!file) {
         throw std::runtime_error("invalid clustering file");
     }
 
-
     Partition zeta(0);
 
     std::string line;
     index omega = 0;
-    while(std::getline(file, line)) {
-        if (line.substr(0, 1) == "*" || line.substr(0, 1) == "#") continue;
+    while (std::getline(file, line)) {
+        if (line.starts_with('*') || line.starts_with('#'))
+            continue;
 
         index c = std::atoi(line.c_str());
         // extend the partition by one entry and store the cluster id
@@ -34,7 +34,7 @@ Partition PartitionReader::read(const std::string &path) {
         }
     }
 
-    zeta.setUpperBound(omega+1);
+    zeta.setUpperBound(omega + 1);
 
     return zeta;
 }

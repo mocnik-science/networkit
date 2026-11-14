@@ -1,75 +1,59 @@
-#include <atomic>
 #include <csignal>
-#include <exception>
+#include <networkit/GlobalState.hpp>
 #include <networkit/auxiliary/SignalHandling.hpp>
 
 namespace Aux {
 
-namespace SignalHandling {
-
 namespace {
-    std::atomic<bool> receivedSIGINT(false);
-    std::atomic<bool> rootSet(false);
-    std::atomic<SignalHandler*> root(0);
-    std::atomic<void (*)(int)> prev_handler;
-    void sigHandler(int sig) {
-        switch (sig) {
-            case SIGINT: receivedSIGINT = true;
-            default: break;
-        }
+
+// this function is the signal handler
+void sigHandler(int sig) {
+    switch (sig) {
+    case SIGINT:
+        NetworKit::GlobalState::setReceivedSIGINT(true);
+    default:
+        break;
     }
 }
-
-bool gotSIGINT() {
-    return receivedSIGINT;
-}
-
-void setSIGINT(bool received) {
-    receivedSIGINT = received;
-}
-
-void init(SignalHandler* caller) {
-    #pragma omp critical (SignalHandlerCritical)
-    {
-        if (!rootSet) {
-            root = caller;
-            prev_handler = signal(SIGINT,sigHandler);
-            rootSet = true;
-        }
-    }
-}
-
-void reset(SignalHandler* caller) {
-    #pragma omp critical (SignalHandlerCritical)
-    {
-        if (root == caller) {
-            rootSet = false;
-            receivedSIGINT = false;
-            root = 0;
-            signal(SIGINT,prev_handler);
-        }
-    }
-}
-
-
-} /* SignalHandling */
+} // namespace
 
 SignalHandler::SignalHandler() {
-    Aux::SignalHandling::init(this);
+
+#pragma omp critical(SignalHandlerCritical)
+    {
+        if (!NetworKit::GlobalState::getRootSet()) {
+            // Registers the function `sigHandler` to be invoked, when CTRL+C/SIGINT is received.
+            // Also registers `this` to be the owner of the signal handling resource (via RAII
+            // responsible for cleanup and unregistering)
+            NetworKit::GlobalState::setRoot(this);
+            NetworKit::GlobalState::setPrevHandler(signal(SIGINT, sigHandler));
+            NetworKit::GlobalState::setRootSet(true);
+        }
+    }
 }
 
 SignalHandler::~SignalHandler() {
-    Aux::SignalHandling::reset(this);
+    // Resets receivedSIGINT to false and rootSet to false to allow a new initialization,
+    // if `this` is the root.
+#pragma omp critical(SignalHandlerCritical)
+    {
+        if (NetworKit::GlobalState::getRoot() == this) {
+            NetworKit::GlobalState::setRootSet(false);
+            NetworKit::GlobalState::setReceivedSIGINT(false);
+            NetworKit::GlobalState::setRoot(0);
+            signal(SIGINT, NetworKit::GlobalState::getPrevHandler());
+        }
+    }
 }
 
 void SignalHandler::assureRunning() {
-    if (Aux::SignalHandling::gotSIGINT()) {
-        throw Aux::SignalHandling::InterruptException();
+    if (NetworKit::GlobalState::getReceivedSIGINT()) {
+        throw InterruptException();
     }
 }
 
 bool SignalHandler::isRunning() {
-    return !Aux::SignalHandling::gotSIGINT();
+    return !NetworKit::GlobalState::getReceivedSIGINT();
 }
 
-} /* Aux */
+} // namespace Aux

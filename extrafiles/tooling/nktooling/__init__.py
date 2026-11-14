@@ -7,8 +7,7 @@ import subprocess
 READONLY = True
 VERBOSE = False
 SHOW_DIFFS = True
-MIN_CLANG_FORMAT_VERSION = 8
-MAX_CLANG_FORMAT_VERSION = 11
+CLANG_FORMAT_VERSION = 22
 
 def setup(args = None):
 	"""
@@ -70,6 +69,15 @@ def failIfReadonly(prgname):
 
 	print("Changes are necessary.")
 	print("Use '%s -w' to apply changes." % prgname)
+	sys.exit(1)
+
+def failIfMalformed(file, err):
+	"""
+	Helper function indented to make CI fail if a NetworKit configuration
+	file is malformed.
+	"""
+
+	print(f"Malformed file: {file}\n\n{err}")
 	sys.exit(1)
 
 def getNetworKitRoot():

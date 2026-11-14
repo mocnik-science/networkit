@@ -5,8 +5,6 @@
  *      Author: Gerd Lindner
  */
 
-// networkit-format
-
 #ifndef NETWORKIT_EDGESCORES_CHIBA_NISHIZEKI_TRIANGLE_EDGE_SCORE_HPP_
 #define NETWORKIT_EDGESCORES_CHIBA_NISHIZEKI_TRIANGLE_EDGE_SCORE_HPP_
 
@@ -25,8 +23,6 @@ class ChibaNishizekiTriangleEdgeScore final : public EdgeScore<count> {
 
 public:
     ChibaNishizekiTriangleEdgeScore(const Graph &G);
-    count score(edgeid eid) override;
-    count score(node u, node v) override;
     void run() override;
 };
 

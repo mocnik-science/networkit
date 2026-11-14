@@ -6,8 +6,6 @@
  *              Eugenio Angriman <angrimae@hu-berlin.de>
  */
 
-// networkit-format
-
 #ifndef NDEBUG
 #include <algorithm>
 #endif
@@ -129,7 +127,7 @@ Graph ClusteredRandomGraphGenerator::generate() {
         addHalfOutEdges(u, end - 1, n, pInter);
     }
 
-    return graphBuilder.toGraph(true, true);
+    return graphBuilder.completeGraph();
 }
 
 Partition ClusteredRandomGraphGenerator::getCommunities() {

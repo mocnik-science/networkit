@@ -13,8 +13,7 @@
 
 namespace NetworKit {
 
-RandomSpanningForest::RandomSpanningForest(const Graph& G):
-        SpanningForest(G) {}
+RandomSpanningForest::RandomSpanningForest(const Graph &G) : SpanningForest(G) {}
 
 void RandomSpanningForest::run() {
     // handle disconnected graphs:
@@ -25,7 +24,7 @@ void RandomSpanningForest::run() {
     const auto comps = cc.getComponents();
 
     forest = GraphTools::copyNodes(*G);
-    for (const auto &comp: comps) {
+    for (const auto &comp : comps) {
         std::unordered_set<node> visited;
 
         // find and process random root
@@ -39,7 +38,7 @@ void RandomSpanningForest::run() {
             node neigh = GraphTools::randomNeighbor(*G, curr);
 
             // if not seen before, insert tree edge
-            if (visited.count(neigh) == 0) {
+            if (!visited.contains(neigh)) {
                 forest.addEdge(curr, neigh);
                 visited.insert(neigh);
             }
@@ -48,6 +47,7 @@ void RandomSpanningForest::run() {
             curr = neigh;
         }
     }
+    hasRun = true;
 }
 
 } /* namespace NetworKit */

@@ -4,8 +4,6 @@
  * @author Michael Hamann
  */
 
-// networkit-format
-
 #ifndef NETWORKIT_IO_BINARY_EDGE_LIST_PARTITION_WRITER_HPP_
 #define NETWORKIT_IO_BINARY_EDGE_LIST_PARTITION_WRITER_HPP_
 
@@ -38,7 +36,7 @@ public:
      * @param[in] zeta The partition to write.
      * @param[in] path The path to write to.
      */
-    void write(Partition &zeta, const std::string &path) const;
+    void write(Partition &zeta, std::string_view path) const;
 
 private:
     node firstNode;

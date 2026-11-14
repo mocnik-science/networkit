@@ -8,6 +8,7 @@
 #ifndef NETWORKIT_DISTANCE_A_STAR_GENERAL_HPP_
 #define NETWORKIT_DISTANCE_A_STAR_GENERAL_HPP_
 
+#include <networkit/auxiliary/VectorComparator.hpp>
 #include <networkit/distance/STSP.hpp>
 
 #include <tlx/container/d_ary_addressable_int_heap.hpp>
@@ -18,7 +19,8 @@ namespace NetworKit {
  * @ingroup distance
  * AStar path-finding algoritm with general Heuristic function.
  */
-template <typename Heuristic> class AStarGeneral final : public STSP {
+template <typename Heuristic>
+class AStarGeneral final : public STSP {
 public:
     /**
      * Creates the AStarGeneral class for the graph @a G, the source node @a
@@ -34,13 +36,14 @@ public:
      * and reconstruct a shortest path from @a source and @a target.
      */
     AStarGeneral(const Graph &G, Heuristic heu, node source, node target, bool storePred = true)
-        : STSP(G, source, target, storePred), heu(heu), heap(Compare(prio)) {}
+        : STSP(G, source, target, storePred), heu(heu), heap{prio} {}
 
     /*
      * Executes the AStar algorithm.
      */
     void run() override {
         if (source == target) {
+            distance = 0.;
             hasRun = true;
             return;
         }
@@ -48,12 +51,13 @@ public:
         init();
         constexpr auto infdist = std::numeric_limits<edgeweight>::max();
         const count n = G->upperNodeIdBound();
+        distance = infdist;
 
-        std::fill(distance.begin(), distance.end(), infdist);
-        distance.resize(n, infdist);
-        distance[source] = 0.;
+        std::ranges::fill(distFromSource, infdist);
+        distFromSource.resize(n, infdist);
+        distFromSource[source] = 0.;
 
-        std::fill(prio.begin(), prio.end(), infdist);
+        std::ranges::fill(prio, infdist);
         prio.resize(n, infdist);
         prio[source] = 0.;
 
@@ -65,13 +69,14 @@ public:
         do {
             top = heap.extract_top();
             if (top == target) {
+                distance = distFromSource[target];
                 break;
             }
 
             G->forNeighborsOf(top, [&](node u, edgeweight w) {
-                const double newDist = distance[top] + w;
-                if (newDist < distance[u]) {
-                    distance[u] = newDist;
+                const double newDist = distFromSource[top] + w;
+                if (newDist < distFromSource[u]) {
+                    distFromSource[u] = newDist;
                     prio[u] = newDist + heu(u);
                     heap.update(u);
                     if (storePred) {
@@ -90,27 +95,13 @@ public:
         hasRun = true;
     }
 
-    edgeweight getDistance() const override {
-        assureFinished();
-        return distance[target];
-    }
-
 private:
-    // Distance from the source node, priorities used for the heap
-    std::vector<double> distance, prio;
+    // Priorities used for the heap
+    std::vector<double> distFromSource, prio;
     // Lower bound of the distance to the target node
     Heuristic heu;
 
-    struct Compare {
-    public:
-        Compare(const std::vector<double> &prio) : prio(prio) {}
-        bool operator()(node u, node v) const { return prio[u] < prio[v]; }
-
-    private:
-        const std::vector<double> &prio;
-    };
-
-    tlx::d_ary_addressable_int_heap<node, 2, Compare> heap;
+    tlx::d_ary_addressable_int_heap<node, 2, Aux::LessInVector<double>> heap;
 };
 } // namespace NetworKit
 

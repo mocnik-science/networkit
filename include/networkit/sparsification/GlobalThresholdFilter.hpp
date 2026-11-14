@@ -5,8 +5,6 @@
  *      Author: Gerd Lindner
  */
 
-// networkit-format
-
 #ifndef NETWORKIT_SPARSIFICATION_GLOBAL_THRESHOLD_FILTER_HPP_
 #define NETWORKIT_SPARSIFICATION_GLOBAL_THRESHOLD_FILTER_HPP_
 
@@ -35,6 +33,7 @@ public:
                           double threshold, bool above);
 
     Graph calculate();
+    Graph calculateUndirected();
 };
 
 } // namespace NetworKit

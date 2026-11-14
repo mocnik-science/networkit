@@ -1,24 +1,17 @@
 # distutils: language=c++
 
 from cython.operator import dereference, preincrement
-from libc.stdint cimport uint64_t
 from libcpp.vector cimport vector
 from libcpp cimport bool as bool_t
 from libcpp.string cimport string
 
-ctypedef uint64_t index
-ctypedef index node
-
 from .base cimport _Algorithm, Algorithm
 from .graph cimport _Graph, Graph
+from .structures cimport index, node
+from .helpers import stdstring
 
 cdef extern from "cython_helper.h":
 	void throw_runtime_error(string message)
-
-def stdstring(pystring):
-	""" convert a Python string to a bytes object which is automatically coerced to std::string"""
-	pybytes = pystring.encode("utf-8")
-	return pybytes
 
 cdef cppclass NodeVectorCallbackWrapper:
 	void* callback
@@ -47,6 +40,8 @@ cdef extern from "<networkit/clique/MaximalCliques.hpp>":
 
 cdef class MaximalCliques(Algorithm):
 	"""
+	MaximalCliques(G, maximumOnly=False, callback=None)
+
 	Algorithm for listing all maximal cliques.
 
 	The implementation is based on the "hybrid" algorithm described in
@@ -57,24 +52,24 @@ cdef class MaximalCliques(Algorithm):
 	Experimental Algorithms (pp. 364375). Springer Berlin Heidelberg.
 	Retrieved from http://link.springer.com/chapter/10.1007/978-3-642-20662-7_31
 
-	The running time of this algorithm should be in O(d^2 * n * 3^{d/3})
+	The running time of this algorithm should be in :math:`O(d^2 * n * 3^{d/3})`
 	where f is the degeneracy of the graph, i.e., the maximum core number.
 	The running time in practive depends on the structure of the graph. In
 	particular for complex networks it is usually quite fast, even graphs with
 	millions of edges can usually be processed in less than a minute.
 
-	Parameters:
-	-----------
+	Parameters
+	----------
 	G : networkit.Graph
 		The graph to list the cliques for
-	maximumOnly : bool
+	maximumOnly : bool, optional
 		A value of True denotes that only one maximum clique is desired. This enables
 		further optimizations of the algorithm to skip smaller cliques more
-		efficiently. This parameter is only considered when no callback is given.
-	callback : callable
+		efficiently. This parameter is only considered when no callback is given. Default: False
+	callback : callable, optional
 		If a callable Python object is given, it will be called once for each
 		maximal clique. Then no cliques will be stored. The callback must accept
-		one parameter which is a list of nodes.
+		one parameter which is a list of nodes. Default: None
 	"""
 	cdef NodeVectorCallbackWrapper* _callback
 	cdef Graph _G
@@ -104,16 +99,17 @@ cdef class MaximalCliques(Algorithm):
 
 	def getCliques(self):
 		"""
+		getCliques()
+
 		Return all found cliques unless a callback was given.
 
 		This method will throw if a callback was given and thus the cliques were not stored.
 		If only the maximum clique was stored, it will return exactly one clique unless the graph
 		is empty.
 
-		Returns:
-		--------
-		A list of cliques, each being represented as a list of nodes.
+		Returns
+		-------
+		list(list(int))
+			A list of cliques, each being represented as a list of nodes.
 		"""
 		return (<_MaximalCliques*>(self._this)).getCliques()
-
-

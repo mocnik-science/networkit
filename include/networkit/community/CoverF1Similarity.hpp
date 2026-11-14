@@ -3,8 +3,6 @@
 
 #include <networkit/community/LocalCoverEvaluation.hpp>
 
-#include <tlx/define/deprecated.hpp>
-
 namespace NetworKit {
 
 /**
@@ -34,7 +32,7 @@ public:
      * @param C The cover that shall be evaluated.
      * @param reference The reference cover to which @a C shall be compared.
      */
-    CoverF1Similarity(const Graph& G, const Cover& C, const Cover& reference);
+    CoverF1Similarity(const Graph &G, const Cover &C, const Cover &reference);
 
     /**
      * Execute the algorithm. The algorithm is not parallel.
@@ -46,14 +44,10 @@ public:
      */
     bool isSmallBetter() const override { return false; }
 
-    /**
-     * @return false - this algorithm has not been parallelized.
-     */
-    bool TLX_DEPRECATED(isParallel() const override) { return false; }
 private:
     const Cover *reference;
 };
 
-}
+} // namespace NetworKit
 
 #endif // NETWORKIT_COMMUNITY_COVER_F1_SIMILARITY_HPP_

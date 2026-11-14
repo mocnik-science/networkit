@@ -5,10 +5,9 @@
  *      Author: henningm
  */
 
-
-#include <networkit/centrality/SpanningEdgeCentrality.hpp>
 #include <networkit/auxiliary/Log.hpp>
 #include <networkit/auxiliary/Timer.hpp>
+#include <networkit/centrality/SpanningEdgeCentrality.hpp>
 
 #include <fstream>
 #include <sstream>
@@ -17,7 +16,8 @@
 
 namespace NetworKit {
 
-SpanningEdgeCentrality::SpanningEdgeCentrality(const Graph& G, double tol): Centrality(G), tol(tol), lamg(1e-5) {
+SpanningEdgeCentrality::SpanningEdgeCentrality(const Graph &G, double tol)
+    : Centrality(G, false, true), tol(tol), lamg(1e-5) {
     // prepare LAMG
     CSRMatrix matrix = CSRMatrix::laplacianMatrix(G);
     Aux::Timer t;
@@ -52,7 +52,7 @@ void SpanningEdgeCentrality::run() {
 
         lamg.solve(rhs, solution);
         double diff = solution[u] - solution[v];
-        scoreData[e] = fabs(diff); // TODO: check unweighted, fix weighted case, fix edge IDs!
+        scoreData[e] = std::fabs(diff); // TODO: check unweighted, fix weighted case, fix edge IDs!
         rhs[u] = 0.0;
         rhs[v] = 0.0;
     });
@@ -68,8 +68,8 @@ void SpanningEdgeCentrality::runApproximation() {
     const count n = G.numberOfNodes();
     const count m = G.numberOfEdges();
     double epsilon2 = tol * tol;
-    const count k = ceil(log2(n)) / epsilon2;
-    double randTab[3] = {1/sqrt(k), -1/sqrt(k)};
+    const count k = std::ceil(std::log2(n)) / epsilon2;
+    double randTab[3] = {1 / std::sqrt(k), -1 / std::sqrt(k)};
     Vector solution(n);
     scoreData.clear();
     scoreData.resize(m, 0.0);
@@ -85,8 +85,7 @@ void SpanningEdgeCentrality::runApproximation() {
             if (u < v) {
                 rhs[u] += r;
                 rhs[v] -= r;
-            }
-            else {
+            } else {
                 rhs[u] -= r;
                 rhs[v] += r;
             }
@@ -107,8 +106,8 @@ void SpanningEdgeCentrality::runParallelApproximation() {
     const count n = G.numberOfNodes();
     const count m = G.numberOfEdges();
     double epsilon2 = tol * tol;
-    const count k = ceil(log2(n)) / epsilon2;
-    double randTab[3] = {1/sqrt(k), -1/sqrt(k)};
+    const count k = std::ceil(std::log2(n)) / epsilon2;
+    double randTab[3] = {1 / std::sqrt(k), -1 / std::sqrt(k)};
     std::vector<Vector> solutions(k, Vector(n));
     std::vector<Vector> rhs(k, Vector(n));
     scoreData.clear();
@@ -124,8 +123,7 @@ void SpanningEdgeCentrality::runParallelApproximation() {
             if (u < v) {
                 rhs[i][u] += r;
                 rhs[i][v] -= r;
-            }
-            else {
+            } else {
                 rhs[i][u] -= r;
                 rhs[i][v] += r;
             }
@@ -144,48 +142,15 @@ void SpanningEdgeCentrality::runParallelApproximation() {
     hasRun = true;
 }
 
-uint64_t SpanningEdgeCentrality::runApproximationAndWriteVectors(const std::string &) {
+uint64_t SpanningEdgeCentrality::runApproximationAndWriteVectors(std::string_view) {
+    WARN("SpanningEdgeCentrality::runApproximationAndWriteVectors should not be used and will be "
+         "deprecated in the future.");
     Aux::Timer t;
-    const count n = G.numberOfNodes();
-    const count m = G.numberOfEdges();
-    const double epsilon2 = tol * tol;
-    const count k = ceil(log(n)) / epsilon2;
-    double randTab[3] = {1/sqrt(k), -1/sqrt(k)};
-    Vector solution(n);
-    scoreData.clear();
-    scoreData.resize(m, 0.0);
-
     t.start();
-    for (index i = 0; i < k; ++i) {
-        Vector rhs(n, 0.0);
-
-        // rhs(v) = \sum_e=1 ^m q(e) * B(e, v)
-        //        = +/- q(e)
-        G.forEdges([&](node u, node v) {
-            double r = randTab[Aux::Random::integer(1)];
-            if (u < v) {
-                rhs[u] += r;
-                rhs[v] -= r;
-            }
-            else {
-                rhs[u] -= r;
-                rhs[v] += r;
-            }
-        });
-
-        lamg.solve(rhs, solution);
-
-        G.forEdges([&](node u, node v, edgeid e) {
-            double diff = solution[u] - solution[v];
-            scoreData[e] += diff * diff; // TODO: fix weighted case!
-        });
-    }
+    runApproximation();
     t.stop();
-    hasRun = true;
-
     return t.elapsedMilliseconds();
 }
-
 
 double SpanningEdgeCentrality::runForEdge(node u, node v) {
     count n = G.numberOfNodes();
@@ -200,8 +165,7 @@ double SpanningEdgeCentrality::runForEdge(node u, node v) {
     TRACE("before solve for ", u, " and ", v);
 
     lamg.solve(rhs, solution);
-    return fabs(solution[u] - solution[v]); // TODO: fix weighted case, fix edge IDs!
+    return std::fabs(solution[u] - solution[v]); // TODO: fix weighted case, fix edge IDs!
 }
 
-
-}
+} // namespace NetworKit

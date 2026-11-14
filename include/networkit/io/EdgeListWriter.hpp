@@ -5,8 +5,6 @@
  *      Author: cls
  */
 
-// networkit-format
-
 #ifndef NETWORKIT_IO_EDGE_LIST_WRITER_HPP_
 #define NETWORKIT_IO_EDGE_LIST_WRITER_HPP_
 
@@ -38,7 +36,7 @@ public:
      * @param[in]  G    the graph
      * @param[in]  path  the output file path
      */
-    void write(const Graph &G, const std::string &path) override;
+    void write(const Graph &G, std::string_view path) override;
 
 private:
     char separator; //!< character separating nodes in an edge line

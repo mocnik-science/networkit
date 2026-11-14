@@ -13,7 +13,7 @@
 
 namespace NetworKit {
 
-class GlobalGTest: public testing::Test {};
+class GlobalGTest : public testing::Test {};
 
 TEST_F(GlobalGTest, testClusteringCoefficient) {
 
@@ -25,7 +25,6 @@ TEST_F(GlobalGTest, testClusteringCoefficient) {
 
     EXPECT_EQ(1.0, cc);
 }
-
 
 TEST_F(GlobalGTest, testGlobalClusteringCoefficient) {
     Graph G(6);

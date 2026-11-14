@@ -19,7 +19,6 @@ namespace NetworKit {
 class StaticGraphGenerator {
 
 public:
-
     /** Default destructor */
     virtual ~StaticGraphGenerator() = default;
 

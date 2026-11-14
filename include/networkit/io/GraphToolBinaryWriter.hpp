@@ -5,8 +5,6 @@
  *      Author: Maximilian Vogel
  */
 
-// networkit-format
-
 #ifndef NETWORKIT_IO_GRAPH_TOOL_BINARY_WRITER_HPP_
 #define NETWORKIT_IO_GRAPH_TOOL_BINARY_WRITER_HPP_
 
@@ -28,7 +26,7 @@ public:
      *
      * @param[in]  path  input file path
      */
-    void write(const Graph &G, const std::string &path) override;
+    void write(const Graph &G, std::string_view path) override;
 
 private:
     bool littleEndianness;

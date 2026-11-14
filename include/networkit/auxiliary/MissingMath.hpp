@@ -1,5 +1,5 @@
 /*
- * MissingMath.h
+ * MissingMath.hpp
  *
  *  Created on: 21.03.2013
  *      Author: cls
@@ -8,9 +8,9 @@
 #ifndef NETWORKIT_AUXILIARY_MISSING_MATH_HPP_
 #define NETWORKIT_AUXILIARY_MISSING_MATH_HPP_
 
+#include <cassert>
 #include <cinttypes>
 #include <cmath>
-#include <cassert>
 #include <stdexcept>
 
 namespace Aux {
@@ -20,10 +20,11 @@ namespace Aux {
  */
 namespace MissingMath {
 
-
 inline int64_t binomial(int64_t n, int64_t k) {
-    if (k == 0) return 1;
-    if (2 * k > n) return binomial(n, n - k);
+    if (k == 0)
+        return 1;
+    if (2 * k > n)
+        return binomial(n, n - k);
 
     int64_t b = n - k + 1;
     for (int64_t i = 2; i <= k; ++i) {
@@ -37,8 +38,8 @@ inline double log_b(double x, double b) {
     if (x == 0) {
         throw std::domain_error("log(0) is undefined");
     }
-    assert (log(b) != 0);
-    return log(x) / log(b);
+    assert(std::log(b) != 0);
+    return std::log(x) / std::log(b);
 }
 
 } /* namespace MissingMath */

@@ -15,11 +15,12 @@
 
 namespace NetworKit {
 
-CommuteTimeDistance::CommuteTimeDistance(const Graph& G, double tol): Algorithm(), G(&G), tol(tol), lamg(1e-5) {
+CommuteTimeDistance::CommuteTimeDistance(const Graph &G, double tol)
+    : Algorithm(), G(&G), tol(tol), lamg(1e-5) {
     // main purpose of method: preparing LAMG
-    if(G.isDirected()) 
+    if (G.isDirected())
         throw std::runtime_error("Commute time distance is only supported for undirected graphs.");
-    
+
     // construct matrix from graph
     CSRMatrix matrix = CSRMatrix::laplacianMatrix(G);
 
@@ -37,9 +38,7 @@ CommuteTimeDistance::CommuteTimeDistance(const Graph& G, double tol): Algorithm(
 void CommuteTimeDistance::run() {
     count n = G->numberOfNodes();
     distances.resize(n);
-    G->forNodes([&](node v){
-        distances[v].resize(n, 0.0);
-    });
+    G->forNodes([&](node v) { distances[v].resize(n, 0.0); });
 
     // temp vector for resetting the solution state
     Vector zeroVector(n, 0.0);
@@ -49,7 +48,7 @@ void CommuteTimeDistance::run() {
     Vector rhs = zeroVector;
 
     // solve for each pair of nodes
-    G->forNodePairs([&](node u, node v){
+    G->forNodePairs([&](node u, node v) {
         // set up right-hand side
         rhs[u] = +1.0;
         rhs[v] = -1.0;
@@ -58,7 +57,7 @@ void CommuteTimeDistance::run() {
         solution = zeroVector;
 
         lamg.solve(rhs, solution);
-        double diff = fabs(solution[u] - solution[v]);
+        double diff = std::fabs(solution[u] - solution[v]);
         distances[u][v] = diff;
         distances[v][u] = diff;
         rhs[u] = 0.0;
@@ -77,10 +76,10 @@ void CommuteTimeDistance::runApproximation() {
 
     // init approximation parameters
     double epsilon2 = tol * tol;
-    k = ceil(log2(n)) / epsilon2;
+    k = std::ceil(std::log2(n)) / epsilon2;
 
     // entries of random projection matrix
-    double randTab[2] = {1/sqrt(k), -1/sqrt(k)};
+    double randTab[2] = {1 / std::sqrt(k), -1 / std::sqrt(k)};
 
     solutions.clear();
     solutions.resize(k, Vector(n));
@@ -97,16 +96,13 @@ void CommuteTimeDistance::runApproximation() {
             if (u < v) {
                 rhs[u] += r;
                 rhs[v] -= r;
-            }
-            else {
+            } else {
                 rhs[u] -= r;
                 rhs[v] += r;
             }
         });
 
-
         lamg.solve(rhs, solutions[i]);
-
     }
     exactly = false;
     hasRun = true;
@@ -117,10 +113,10 @@ void CommuteTimeDistance::runParallelApproximation() {
 
     // init approximation parameters
     double epsilon2 = tol * tol;
-    k = ceil(log2(n)) / epsilon2;
+    k = std::ceil(std::log2(n)) / epsilon2;
 
     // entries of random projection matrix
-    double randTab[3] = {1/sqrt(k), -1/sqrt(k)};
+    double randTab[3] = {1 / std::sqrt(k), -1 / std::sqrt(k)};
 
     solutions.clear();
     solutions.resize(k, Vector(n));
@@ -135,8 +131,7 @@ void CommuteTimeDistance::runParallelApproximation() {
             if (u < v) {
                 rhs[i][u] += r;
                 rhs[i][v] -= r;
-            }
-            else {
+            } else {
                 rhs[i][u] -= r;
                 rhs[i][v] += r;
             }
@@ -156,15 +151,14 @@ double CommuteTimeDistance::distance(node u, node v) {
     double volG = GraphTools::volume(*G);
 
     if (exactly) {
-        return sqrt(distances[u][v] * volG);
-    }
-    else {
+        return std::sqrt(distances[u][v] * volG);
+    } else {
         double dist = 0.0;
         for (index i = 0; i < k; ++i) {
             double diff = solutions[i][u] - solutions[i][v];
             dist += diff * diff;
         }
-        return sqrt(dist * volG);
+        return std::sqrt(dist * volG);
     }
 }
 
@@ -183,8 +177,8 @@ double CommuteTimeDistance::runSinglePair(node u, node v) {
     solution = zeroVector;
     lamg.solve(rhs, solution);
     double diff = solution[u] - solution[v];
-    dist = fabs(diff);
-    return sqrt(dist * GraphTools::volume(*G));
+    dist = std::fabs(diff);
+    return std::sqrt(dist * GraphTools::volume(*G));
 }
 
 double CommuteTimeDistance::runSingleSource(node u) {
@@ -194,7 +188,7 @@ double CommuteTimeDistance::runSingleSource(node u) {
     // set up solution vector and status
     std::vector<Vector> rhs(n, Vector(n));
     std::vector<Vector> solution(n, Vector(n));
-    G->forNodes([&](node i){
+    G->forNodes([&](node i) {
         rhs[i] = zeroVector;
         solution[i] = zeroVector;
         rhs[i][u] = +1.0;
@@ -208,13 +202,13 @@ double CommuteTimeDistance::runSingleSource(node u) {
     INFO("rhs.size() = ", rhs.size());
     INFO("solutions.size() = ", solution.size());
     lamg.parallelSolve(rhs, solution);
-    G->forNodes([&](node i){
+    G->forNodes([&](node i) {
         if (i != u) {
             double diff = solution[i][u] - solution[i][i];
             dist += diff * diff;
         }
     });
-    return sqrt(dist * GraphTools::volume(*G));
+    return std::sqrt(dist * GraphTools::volume(*G));
 }
 
-}
+} // namespace NetworKit

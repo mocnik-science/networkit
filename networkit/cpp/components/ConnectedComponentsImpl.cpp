@@ -1,4 +1,4 @@
-// networkit-format
+#include <queue>
 
 #include "ConnectedComponentsImpl.hpp"
 
@@ -93,11 +93,7 @@ Graph ConnectedComponentsImpl<WeaklyCC>::extractLargestConnectedComponent(const 
             ->first;
 
     const auto nodesInLCC = component.getMembers(largestCCIndex);
-    const auto largestCC = GraphTools::subgraphFromNodes(G, {nodesInLCC.begin(), nodesInLCC.end()});
-    if (compactGraph)
-        return GraphTools::getCompactedGraph(largestCC,
-                                             GraphTools::getContinuousNodeIds(largestCC));
-    return largestCC;
+    return GraphTools::subgraphFromNodes(G, nodesInLCC.begin(), nodesInLCC.end(), compactGraph);
 }
 
 template class ConnectedComponentsImpl<false>;

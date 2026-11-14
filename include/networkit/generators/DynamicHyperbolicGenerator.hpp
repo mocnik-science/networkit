@@ -8,15 +8,14 @@
 #ifndef NETWORKIT_GENERATORS_DYNAMIC_HYPERBOLIC_GENERATOR_HPP_
 #define NETWORKIT_GENERATORS_DYNAMIC_HYPERBOLIC_GENERATOR_HPP_
 
-#include <map>
-
 #include <networkit/generators/DynamicGraphGenerator.hpp>
 #include <networkit/generators/quadtree/Quadtree.hpp>
 
 namespace NetworKit {
 
-class DynamicHyperbolicGenerator final : public DynamicGraphGenerator  {
+class DynamicHyperbolicGenerator final : public DynamicGraphGenerator {
     friend class GeneratorsGTest;
+
 public:
     /**
      * Initialize a dynamic hyperbolic generator and generate initial node positions
@@ -26,25 +25,30 @@ public:
      * @param avgDegree expected average degree of target graph
      * @param exp exponent of power-law degree distribution
      * @param T temperature parameter in edge probabilities
-     * @param moveEachStep fraction of nodes which are moved at each time step, should be non-negative
+     * @param moveEachStep fraction of nodes which are moved at each time step, should be
+     * non-negative
      * @param moveDistance base value for the node movements
      */
 
-    DynamicHyperbolicGenerator(count n = 1000, double avgDegree = 6, double exp = 3, double T = 0, double moveEachStep = 0, double moveDistance = 0);
+    DynamicHyperbolicGenerator(count n = 1000, double avgDegree = 6, double exp = 3, double T = 0,
+                               double moveEachStep = 0, double moveDistance = 0);
 
     /**
-     * Initialize a dynamic hyperbolic generator with given initial node positions in polar coordinates
-     * Node movement happens in discrete time steps
+     * Initialize a dynamic hyperbolic generator with given initial node positions in polar
+     * coordinates Node movement happens in discrete time steps
      *
      * @param angles angular coordinates of initial positions
      * @param radii radial coordinates of initial positions
      * @param R radius of hyperbolic disk
      * @param alpha dispersion parameter of point distribution
      * @param T temperature parameter in edge probabilities
-     * @param moveEachStep fraction of nodes which are moved at each time step, should be non-negative
+     * @param moveEachStep fraction of nodes which are moved at each time step, should be
+     * non-negative
      * @param moveDistance base value for the node movements
      */
-    DynamicHyperbolicGenerator(std::vector<double> &angles, std::vector<double> &radii,  double R, double alpha, double T = 0, double moveEachStep = 0, double moveDistance = 0);
+    DynamicHyperbolicGenerator(std::vector<double> &angles, std::vector<double> &radii, double R,
+                               double alpha, double T = 0, double moveEachStep = 0,
+                               double moveDistance = 0);
 
     /**
      * Default constructor
@@ -60,7 +64,8 @@ public:
     std::vector<GraphEvent> generate(count nSteps) override;
 
     /**
-     * Get the graph corresponding to the current state of the generator. Does not change the generator
+     * Get the graph corresponding to the current state of the generator. Does not change the
+     * generator
      *
      * @return graph at the current state
      */
@@ -105,25 +110,25 @@ private:
      */
     void moveNode(index node);
 
-    //general geometry parameters
+    // general geometry parameters
     count nodeCount;
     double alpha;
     double R;
     double T;
 
-    //movement parameters
+    // movement parameters
     double moveEachStep;
     double moveDistance;
 
-    //coordinates
+    // coordinates
     vector<double> angles;
     vector<double> radii;
 
-    //movement vectors
+    // movement vectors
     vector<double> angularMovement;
     vector<double> radialMovement;
 
-    //data structures
+    // data structures
     Quadtree<index, false> quad;
     vector<double> bandRadii;
     vector<vector<Point2DWithIndex<double>>> bands;
@@ -134,4 +139,3 @@ private:
 
 } /* namespace NetworKit */
 #endif // NETWORKIT_GENERATORS_DYNAMIC_HYPERBOLIC_GENERATOR_HPP_
-

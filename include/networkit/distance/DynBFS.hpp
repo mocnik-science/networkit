@@ -8,8 +8,9 @@
 #ifndef NETWORKIT_DISTANCE_DYN_BFS_HPP_
 #define NETWORKIT_DISTANCE_DYN_BFS_HPP_
 
-#include <networkit/distance/DynSSSP.hpp>
+#include <span>
 
+#include <networkit/distance/DynSSSP.hpp>
 
 namespace NetworKit {
 
@@ -19,8 +20,9 @@ namespace NetworKit {
  */
 class DynBFS final : public DynSSSP {
 
-public:
+    static constexpr edgeweight infDist = std::numeric_limits<edgeweight>::max();
 
+public:
     /**
      * Creates the object for @a G and source @a s.
      *
@@ -28,7 +30,7 @@ public:
      * @param s The source node.
      * @param storePredecessors keep track of the lists of predecessors?
      */
-    DynBFS(const Graph& G, node s, bool storePredecessors = true);
+    DynBFS(const Graph &G, node s, bool storePredecessors = true);
 
     void run() override;
 
@@ -36,16 +38,15 @@ public:
     void update(GraphEvent e) override;
 
     /** Updates the distances after a batch of edge insertions.*/
-    void updateBatch(const std::vector<GraphEvent>& batch) override;
+    void updateBatch(std::span<const GraphEvent> batch) override;
 
     /* Returns the number of shortest paths to node t.*/
     bigfloat getNumberOfPaths(node t) const;
 
 private:
-    enum Color {WHITE, BLACK, GRAY};
+    enum Color { WHITE, BLACK, GRAY };
     std::vector<Color> color;
     count maxDistance;
-
 };
 
 inline bigfloat DynBFS::getNumberOfPaths(node t) const {

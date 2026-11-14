@@ -10,42 +10,42 @@ namespace NetworKit {
 ThrillGraphBinaryReader::ThrillGraphBinaryReader(count n) : n(n) {}
 
 namespace {
-    uint32_t get_uint32(std::ifstream& is) {
-        uint32_t result = 0;
+uint32_t get_uint32(std::ifstream &is) {
+    uint32_t result = 0;
 
-        for (size_t i = 0; i < sizeof(uint32_t); ++i) {
-            uint32_t u = is.get();
-            result |= (u << (i * 8));
-        }
-
-        return result;
+    for (size_t i = 0; i < sizeof(uint32_t); ++i) {
+        uint32_t u = is.get();
+        result |= (u << (i * 8));
     }
 
-    uint64_t get_variant(std::ifstream& is) {
-        size_t v = 0;
-        for (size_t shift_width = 0; shift_width < 64; shift_width += 7) {
-            uint64_t u = is.get();
-
-            // The last value is just a single bit (the 64th bit) - throw if there is
-            // more than this single bit in the input.
-            if (shift_width == 63 && (u & 0xFE)) {
-                throw std::overflow_error("Overflow during variant64 decoding.");
-            }
-
-            // Read exactly 7 bits from the input
-            v |= (u & 0x7F) << shift_width;
-
-            // If the 8th bit is not set, we reached the end of the variant
-            if (!(u & 0x80)) break;
-        }
-
-        return v;
-    }
+    return result;
 }
 
+uint64_t get_variant(std::ifstream &is) {
+    size_t v = 0;
+    for (size_t shift_width = 0; shift_width < 64; shift_width += 7) {
+        uint64_t u = is.get();
 
-Graph ThrillGraphBinaryReader::read(const std::string &path) {
-    return read(std::vector<std::string>(1, path));
+        // The last value is just a single bit (the 64th bit) - throw if there is
+        // more than this single bit in the input.
+        if (shift_width == 63 && (u & 0xFE)) {
+            throw std::overflow_error("Overflow during variant64 decoding.");
+        }
+
+        // Read exactly 7 bits from the input
+        v |= (u & 0x7F) << shift_width;
+
+        // If the 8th bit is not set, we reached the end of the variant
+        if (!(u & 0x80))
+            break;
+    }
+
+    return v;
+}
+} // namespace
+
+Graph ThrillGraphBinaryReader::read(std::string_view path) {
+    return read(std::vector<std::string>(1, path.data()));
 }
 
 Graph ThrillGraphBinaryReader::read(const std::vector<std::string> &paths) {
@@ -58,7 +58,7 @@ Graph ThrillGraphBinaryReader::read(const std::vector<std::string> &paths) {
         auto next_input = [&]() {
             is.close();
             if (file_index < paths.size()) {
-                is.open(paths[file_index++]);
+                is.open(paths[file_index++], std::ios::binary);
                 // Throw an exception when no byte could be read at any point
                 is.exceptions(std::ifstream::failbit | std::ifstream::badbit);
             }
@@ -92,7 +92,7 @@ Graph ThrillGraphBinaryReader::read(const std::vector<std::string> &paths) {
         }
     }
 
-    return gb.toGraph(true, true);
+    return gb.completeGraph();
 }
 
 } // namespace NetworKit

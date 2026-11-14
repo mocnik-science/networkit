@@ -5,8 +5,6 @@
  *      Author: Maximilian Vogel (maximilian.vogel@student.kit.edu)
  */
 
-// networkit-format
-
 #ifndef NETWORKIT_IO_GML_GRAPH_READER_HPP_
 #define NETWORKIT_IO_GML_GRAPH_READER_HPP_
 
@@ -28,7 +26,7 @@ public:
      *
      * @param[out]  the graph read from file
      */
-    Graph read(const std::string &path) override;
+    Graph read(std::string_view path) override;
 };
 
 } /* namespace NetworKit */

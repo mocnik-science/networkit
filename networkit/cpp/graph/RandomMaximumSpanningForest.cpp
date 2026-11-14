@@ -1,11 +1,12 @@
-#include <networkit/graph/RandomMaximumSpanningForest.hpp>
-#include <networkit/auxiliary/SignalHandling.hpp>
 #include <networkit/auxiliary/Parallel.hpp>
+#include <networkit/auxiliary/SignalHandling.hpp>
 #include <networkit/graph/GraphTools.hpp>
+#include <networkit/graph/RandomMaximumSpanningForest.hpp>
 
 namespace NetworKit {
 
-RandomMaximumSpanningForest::RandomMaximumSpanningForest(const Graph &G) : G(G), hasWeightedEdges(false), hasMSF(false), hasAttribute(false) { }
+RandomMaximumSpanningForest::RandomMaximumSpanningForest(const Graph &G)
+    : G(G), hasWeightedEdges(false), hasMSF(false), hasAttribute(false) {}
 
 void RandomMaximumSpanningForest::run() {
     hasRun = false;
@@ -71,7 +72,9 @@ void RandomMaximumSpanningForest::run() {
 }
 
 bool RandomMaximumSpanningForest::inMSF(edgeid eid) const {
-    if (!hasAttribute) throw std::runtime_error("Error: Either the attribute hasn't be calculated yet or the graph has no edge ids.");
+    if (!hasAttribute)
+        throw std::runtime_error(
+            "Error: Either the attribute hasn't be calculated yet or the graph has no edge ids.");
 
     return msfAttribute[eid];
 }
@@ -86,10 +89,12 @@ bool RandomMaximumSpanningForest::inMSF(node u, node v) const {
     }
 }
 
-std::vector< bool > RandomMaximumSpanningForest::getAttribute(bool move) {
+std::vector<bool> RandomMaximumSpanningForest::getIndicator(bool move) {
     std::vector<bool> result;
 
-    if (!hasAttribute) throw std::runtime_error("Error: The run() method must be executed first");
+    if (!hasAttribute)
+        throw std::runtime_error(
+            "Error: The run() method must be executed first or the graph has no edge ids.");
 
     if (move) {
         result = std::move(msfAttribute);
@@ -101,10 +106,18 @@ std::vector< bool > RandomMaximumSpanningForest::getAttribute(bool move) {
     return result;
 }
 
+std::vector<bool> RandomMaximumSpanningForest::getAttribute(bool move) {
+    WARN("DEPRECATED: This function will no longer be supported in later releases. Use "
+         "getIndicator() instead.");
+
+    return getIndicator(move);
+}
+
 Graph RandomMaximumSpanningForest::getMSF(bool move) {
     Graph result;
 
-    if (!hasMSF) throw std::runtime_error("Error: The run() method must be executed first");
+    if (!hasMSF)
+        throw std::runtime_error("Error: The run() method must be executed first");
 
     if (move) {
         result = std::move(msf);
@@ -115,14 +128,5 @@ Graph RandomMaximumSpanningForest::getMSF(bool move) {
 
     return result;
 }
-
-std::string RandomMaximumSpanningForest::toString() const {
-    return "Random maximum weight spanning forest";
-}
-
-bool RandomMaximumSpanningForest::isParallel() const {
-    return false;
-}
-
 
 } // namespace NetworKit

@@ -5,8 +5,6 @@
  *      Author: Christian Staudt
  */
 
-// networkit-format
-
 #ifndef NETWORKIT_IO_GRAPH_IO_HPP_
 #define NETWORKIT_IO_GRAPH_IO_HPP_
 
@@ -33,7 +31,7 @@ public:
      *     for each edge {u, v}:
      *       write line "u v"
      */
-    void writeEdgeList(const Graph &G, const std::string &path);
+    void writeEdgeList(const Graph &G, std::string_view path);
 
     /**
      * Writes graph to text file in adjacency list format.
@@ -47,7 +45,7 @@ public:
      *       write "x" for each edge {v, x}
      *       end line
      */
-    void writeAdjacencyList(const Graph &G, const std::string &path);
+    void writeAdjacencyList(const Graph &G, std::string_view path);
 };
 
 } /* namespace NetworKit */

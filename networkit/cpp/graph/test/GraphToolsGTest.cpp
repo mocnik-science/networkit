@@ -5,20 +5,22 @@
  *      Author: Maximilian Vogel
  */
 
-// networkit-format
+#include <array>
+#include <unordered_map>
 
 #include <gtest/gtest.h>
 
 #include <networkit/auxiliary/Random.hpp>
+#include <networkit/generators/DorogovtsevMendesGenerator.hpp>
 #include <networkit/generators/ErdosRenyiGenerator.hpp>
 #include <networkit/graph/Graph.hpp>
 #include <networkit/graph/GraphTools.hpp>
+#include <networkit/io/METISGraphReader.hpp>
 
 namespace NetworKit {
 
 class GraphToolsGTest : public testing::TestWithParam<std::pair<bool, bool>> {
 protected:
-    Graph generateRandomWeights(const Graph &G) const;
     bool weighted() const noexcept;
     bool directed() const noexcept;
 };
@@ -26,12 +28,6 @@ protected:
 INSTANTIATE_TEST_SUITE_P(InstantiationName, GraphToolsGTest,
                          testing::Values(std::make_pair(false, false), std::make_pair(true, false),
                                          std::make_pair(false, true), std::make_pair(true, true)));
-
-Graph GraphToolsGTest::generateRandomWeights(const Graph &G) const {
-    Graph Gw(G, true, G.isDirected());
-    Gw.forEdges([&](node u, node v) { Gw.setWeight(u, v, Aux::Random::probability()); });
-    return Gw;
-}
 
 bool GraphToolsGTest::weighted() const noexcept {
     return GetParam().first;
@@ -56,7 +52,7 @@ TEST_P(GraphToolsGTest, testSize) {
         Aux::Random::setSeed(seed, false);
         auto G = ErdosRenyiGenerator(n, p, directed()).generate();
         if (weighted()) {
-            G = generateRandomWeights(G);
+            GraphTools::randomizeWeights(G);
         }
 
         doTest(G);
@@ -87,7 +83,7 @@ TEST_P(GraphToolsGTest, testDensity) {
         Aux::Random::setSeed(seed, false);
         auto G = ErdosRenyiGenerator(n, p, directed()).generate();
         if (weighted()) {
-            G = generateRandomWeights(G);
+            GraphTools::randomizeWeights(G);
         }
 
         doTest(G);
@@ -132,7 +128,7 @@ TEST_P(GraphToolsGTest, testVolume) {
         Aux::Random::setSeed(seed, false);
         auto G = ErdosRenyiGenerator(n, p, directed()).generate();
         if (weighted()) {
-            G = generateRandomWeights(G);
+            GraphTools::randomizeWeights(G);
         }
 
         doTest(G);
@@ -173,7 +169,7 @@ TEST_P(GraphToolsGTest, testMaxDegree) {
         Aux::Random::setSeed(seed, false);
         auto G = ErdosRenyiGenerator(n, p, directed()).generate();
         if (weighted()) {
-            G = generateRandomWeights(G);
+            GraphTools::randomizeWeights(G);
         }
 
         doTest(G);
@@ -432,7 +428,7 @@ TEST_F(GraphToolsGTest, testGetCompactedGraphUndirectedWeighted1) {
     auto nodeMap = GraphTools::getContinuousNodeIds(G);
     auto Gcompact = GraphTools::getCompactedGraph(G, nodeMap);
 
-    EXPECT_EQ(G.totalEdgeWeight(), Gcompact.totalEdgeWeight());
+    EXPECT_DOUBLE_EQ(G.totalEdgeWeight(), Gcompact.totalEdgeWeight());
     EXPECT_NE(G.upperNodeIdBound(), Gcompact.upperNodeIdBound());
     EXPECT_EQ(G.numberOfNodes(), Gcompact.numberOfNodes());
     EXPECT_EQ(G.numberOfEdges(), Gcompact.numberOfEdges());
@@ -459,7 +455,7 @@ TEST_F(GraphToolsGTest, testGetCompactedGraphDirectedWeighted1) {
     auto nodeMap = GraphTools::getContinuousNodeIds(G);
     auto Gcompact = GraphTools::getCompactedGraph(G, nodeMap);
 
-    EXPECT_EQ(G.totalEdgeWeight(), Gcompact.totalEdgeWeight());
+    EXPECT_DOUBLE_EQ(G.totalEdgeWeight(), Gcompact.totalEdgeWeight());
     EXPECT_NE(G.upperNodeIdBound(), Gcompact.upperNodeIdBound());
     EXPECT_EQ(G.numberOfNodes(), Gcompact.numberOfNodes());
     EXPECT_EQ(G.numberOfEdges(), Gcompact.numberOfEdges());
@@ -485,7 +481,7 @@ TEST_F(GraphToolsGTest, testGetCompactedGraphDirectedUnweighted1) {
     auto nodeMap = GraphTools::getContinuousNodeIds(G);
     auto Gcompact = GraphTools::getCompactedGraph(G, nodeMap);
 
-    EXPECT_EQ(G.totalEdgeWeight(), Gcompact.totalEdgeWeight());
+    EXPECT_DOUBLE_EQ(G.totalEdgeWeight(), Gcompact.totalEdgeWeight());
     EXPECT_NE(G.upperNodeIdBound(), Gcompact.upperNodeIdBound());
     EXPECT_EQ(G.numberOfNodes(), Gcompact.numberOfNodes());
     EXPECT_EQ(G.numberOfEdges(), Gcompact.numberOfEdges());
@@ -539,12 +535,28 @@ TEST_F(GraphToolsGTest, testRestoreGraph) {
     auto Gcompact = GraphTools::getCompactedGraph(G, nodeMap);
     Graph Goriginal = GraphTools::restoreGraph(invertedNodeMap, Gcompact);
 
-    EXPECT_EQ(Goriginal.totalEdgeWeight(), Gcompact.totalEdgeWeight());
+    EXPECT_DOUBLE_EQ(Goriginal.totalEdgeWeight(), Gcompact.totalEdgeWeight());
     EXPECT_NE(Goriginal.upperNodeIdBound(), Gcompact.upperNodeIdBound());
     EXPECT_EQ(Goriginal.numberOfNodes(), Gcompact.numberOfNodes());
     EXPECT_EQ(Goriginal.numberOfEdges(), Gcompact.numberOfEdges());
     EXPECT_EQ(Goriginal.isDirected(), Gcompact.isDirected());
     EXPECT_EQ(Goriginal.isWeighted(), Gcompact.isWeighted());
+}
+
+TEST_F(GraphToolsGTest, testAugmentedGraph) {
+    Aux::Random::setSeed(42, false);
+    const count n = 500;
+    auto G = ErdosRenyiGenerator(n, 0.05).generate();
+    node root;
+    Graph augG;
+    std::tie(augG, root) = GraphTools::createAugmentedGraph(G);
+
+    EXPECT_TRUE(augG.hasNode(root));
+    EXPECT_EQ(n + 1, augG.numberOfNodes());
+    EXPECT_EQ(G.numberOfEdges() + n, augG.numberOfEdges());
+    EXPECT_EQ(n, augG.degree(root));
+
+    G.parallelForNodes([&](node u) { EXPECT_TRUE(augG.hasEdge(u, root)); });
 }
 
 TEST_P(GraphToolsGTest, testGetRemappedGraph) {
@@ -672,9 +684,11 @@ TEST_P(GraphToolsGTest, testSubgraphFromNodesUndirected) {
     G.addEdge(3, 2, 5.0);
     G.addEdge(1, 2, 3.0);
 
-    {
+    std::array<bool, 2> compactOptions{{true, false}};
+
+    for (bool compact : compactOptions) {
         std::unordered_set<node> nodes = {0};
-        auto res = GraphTools::subgraphFromNodes(G, nodes);
+        auto res = GraphTools::subgraphFromNodes(G, nodes.begin(), nodes.end(), compact);
         EXPECT_EQ(weighted(), res.isWeighted());
         EXPECT_FALSE(res.isDirected());
         EXPECT_EQ(res.numberOfNodes(), 1);
@@ -683,7 +697,7 @@ TEST_P(GraphToolsGTest, testSubgraphFromNodesUndirected) {
 
     {
         std::unordered_set<node> nodes = {0};
-        auto res = GraphTools::subgraphFromNodes(G, nodes, true);
+        auto res = GraphTools::subgraphAndNeighborsFromNodes(G, nodes, true);
 
         EXPECT_EQ(res.numberOfNodes(), 3);
         EXPECT_EQ(res.numberOfEdges(), 2); // 0-1, 0-2, NOT 1-2
@@ -692,18 +706,27 @@ TEST_P(GraphToolsGTest, testSubgraphFromNodesUndirected) {
         EXPECT_DOUBLE_EQ(G.weight(0, 2), weighted() ? 2.0 : defaultEdgeWeight);
     }
 
-    {
+    for (bool compact : compactOptions) {
         std::unordered_set<node> nodes = {0, 1};
-        auto res = GraphTools::subgraphFromNodes(G, nodes);
+        auto res = GraphTools::subgraphFromNodes(G, nodes.begin(), nodes.end(), compact);
         EXPECT_EQ(res.numberOfNodes(), 2);
         EXPECT_EQ(res.numberOfEdges(), 1); // 0 - 1
     }
 
     {
         std::unordered_set<node> nodes = {0, 1};
-        auto res = GraphTools::subgraphFromNodes(G, nodes, true);
+        auto res = GraphTools::subgraphAndNeighborsFromNodes(G, nodes, true);
         EXPECT_EQ(res.numberOfNodes(), 4);
         EXPECT_EQ(res.numberOfEdges(), 4); // 0-1, 0-2, 1-2, 1-3
+    }
+
+    G.addEdge(0, 0);
+
+    for (bool compact : compactOptions) {
+        std::unordered_set<node> nodes = {0, 1};
+        auto res = GraphTools::subgraphFromNodes(G, nodes.begin(), nodes.end(), compact);
+        EXPECT_EQ(res.numberOfNodes(), 2);
+        EXPECT_EQ(res.numberOfEdges(), 2); // 0 - 1, 0 - 0
     }
 }
 
@@ -724,41 +747,49 @@ TEST_P(GraphToolsGTest, testSubgraphFromNodesDirected) {
     G.addEdge(3, 2, 5.0);
     G.addEdge(1, 2, 3.0);
 
-    {
+    std::array<bool, 2> compactOptions{{true, false}};
+
+    for (bool compact : compactOptions) {
         std::unordered_set<node> nodes = {0};
-        auto res = GraphTools::subgraphFromNodes(G, nodes);
+        auto res = GraphTools::subgraphFromNodes(G, nodes.begin(), nodes.end(), compact);
 
         EXPECT_EQ(weighted(), res.isWeighted());
         EXPECT_TRUE(res.isDirected());
 
         EXPECT_EQ(res.numberOfNodes(), 1);
         EXPECT_EQ(res.numberOfEdges(), 0);
+
+        if (compact) {
+            EXPECT_EQ(res.upperNodeIdBound(), 1);
+        } else {
+            EXPECT_EQ(res.upperNodeIdBound(), G.upperNodeIdBound());
+        }
     }
 
     {
         std::unordered_set<node> nodes = {0};
-        auto res = GraphTools::subgraphFromNodes(G, nodes, true);
+        auto res = GraphTools::subgraphAndNeighborsFromNodes(G, nodes, true);
         EXPECT_EQ(res.numberOfNodes(), 3);
         EXPECT_EQ(res.numberOfEdges(), 2); // 0->1, 0->2, NOT 1->2
     }
 
-    {
+    for (bool compact : compactOptions) {
         std::unordered_set<node> nodes = {0, 1};
-        auto res = GraphTools::subgraphFromNodes(G, nodes);
+        auto res = GraphTools::subgraphFromNodes(G, nodes.begin(), nodes.end(), compact);
         EXPECT_EQ(res.numberOfNodes(), 2);
         EXPECT_EQ(res.numberOfEdges(), 1); // 0 -> 1
     }
 
     {
         std::unordered_set<node> nodes = {0, 1};
-        auto res = GraphTools::subgraphFromNodes(G, nodes, true);
+        auto res = GraphTools::subgraphAndNeighborsFromNodes(G, nodes, true);
         EXPECT_EQ(res.numberOfNodes(), 3);
         EXPECT_EQ(res.numberOfEdges(), 3); // 0->1, 0->2, 1->2
     }
 
     {
         std::unordered_set<node> nodes = {0, 1};
-        auto res = GraphTools::subgraphFromNodes(G, nodes, true, true);
+        auto res = GraphTools::subgraphAndNeighborsFromNodes(G, nodes, true, true);
         EXPECT_EQ(res.numberOfNodes(), 4);
         EXPECT_EQ(res.numberOfEdges(), 4); // 0->1, 0->2, 1->2, 3->1
     }
@@ -795,7 +826,7 @@ TEST_P(GraphToolsGTest, testTranspose) {
         EXPECT_EQ(G.upperNodeIdBound(), Gtrans.upperNodeIdBound());
         EXPECT_EQ(G.numberOfEdges(), Gtrans.numberOfEdges());
         EXPECT_EQ(G.upperEdgeIdBound(), Gtrans.upperEdgeIdBound());
-        EXPECT_EQ(G.totalEdgeWeight(), Gtrans.totalEdgeWeight());
+        EXPECT_DOUBLE_EQ(G.totalEdgeWeight(), Gtrans.totalEdgeWeight());
         EXPECT_EQ(G.numberOfSelfLoops(), Gtrans.numberOfSelfLoops());
 
         // test for regular edges
@@ -819,9 +850,16 @@ TEST_P(GraphToolsGTest, testToUndirected) {
     constexpr double p = 0.2;
 
     auto testGraphs = [&](const Graph &G, const Graph &G1) {
+        // we need this because we lose edges due to some nodes having both an in edge and an out
+        // edge to the same node.
+        count edgesLost = 0;
+        if (G.isDirected())
+            edgesLost = G.parallelSumForEdges(
+                [&](node u, node v) { return (u != v && G.hasEdge(v, u)) ? 1 : 0; });
+
         EXPECT_EQ(G.numberOfNodes(), G1.numberOfNodes());
         EXPECT_EQ(G.upperNodeIdBound(), G1.upperNodeIdBound());
-        EXPECT_EQ(G.numberOfEdges(), G1.numberOfEdges());
+        EXPECT_EQ(G.numberOfEdges() - edgesLost, G1.numberOfEdges());
         EXPECT_EQ(G.upperEdgeIdBound(), G1.upperEdgeIdBound());
         EXPECT_EQ(G.isWeighted(), G1.isWeighted());
         EXPECT_NE(G.isDirected(), G1.isDirected());
@@ -829,7 +867,8 @@ TEST_P(GraphToolsGTest, testToUndirected) {
 
         G.forEdges([&](node u, node v, edgeweight w) {
             EXPECT_TRUE(G1.hasEdge(u, v));
-            EXPECT_DOUBLE_EQ(G1.weight(u, v), w);
+            EXPECT_DOUBLE_EQ(G1.weight(u, v),
+                             !G.isDirected() || !weighted() ? w : w + G.weight(v, u));
         });
     };
 
@@ -837,7 +876,7 @@ TEST_P(GraphToolsGTest, testToUndirected) {
         Aux::Random::setSeed(seed, false);
         auto G = ErdosRenyiGenerator(n, p, true).generate();
         if (weighted()) {
-            G = generateRandomWeights(G);
+            GraphTools::randomizeWeights(G);
         }
         auto G1 = GraphTools::toUndirected(G);
         testGraphs(G, G1);
@@ -870,7 +909,7 @@ TEST_P(GraphToolsGTest, testToUnWeighted) {
         auto G1 = GraphTools::toWeighted(G);
         testGraphs(G, G1);
 
-        G = generateRandomWeights(G);
+        GraphTools::randomizeWeights(G);
         G1 = GraphTools::toUnweighted(G);
         testGraphs(G, G1);
     }
@@ -909,8 +948,8 @@ TEST_P(GraphToolsGTest, testAppend) {
         auto G2 = ErdosRenyiGenerator(n2, p2, directed()).generate();
 
         if (weighted()) {
-            G1 = generateRandomWeights(G1);
-            G2 = generateRandomWeights(G2);
+            GraphTools::randomizeWeights(G1);
+            GraphTools::randomizeWeights(G2);
         }
 
         auto G(G1);
@@ -953,14 +992,238 @@ TEST_P(GraphToolsGTest, testMerge) {
         auto G1 = ErdosRenyiGenerator(n2, p2, directed()).generate();
 
         if (weighted()) {
-            Gorig = generateRandomWeights(Gorig);
-            G1 = generateRandomWeights(G1);
+            GraphTools::randomizeWeights(Gorig);
+            GraphTools::randomizeWeights(G1);
         }
 
         auto Gmerge(Gorig);
         GraphTools::merge(Gmerge, G1);
         testGraphs(Gorig, Gmerge, G1);
     }
+}
+
+TEST_P(GraphToolsGTest, testEdgesSortedByWeight) {
+    const auto hasEdgesSortedByWeight = [](const Graph &G, bool decreasing) -> bool {
+        for (node u : G.nodeRange()) {
+            node prevNode = decreasing ? none : 0;
+            edgeweight prevWeight =
+                (decreasing ? 1. : -1.) * std::numeric_limits<edgeweight>::max();
+            bool sorted = true;
+            G.forNeighborsOf(u, [&](node v, edgeweight ew) {
+                if (ew == prevWeight)
+                    sorted = prevNode <= v;
+                else
+                    sorted = decreasing ? ew < prevWeight : ew > prevWeight;
+                prevNode = v;
+                prevWeight = ew;
+            });
+
+            if (!sorted)
+                return false;
+        }
+
+        return true;
+    };
+
+    for (int seed : {1, 2, 3}) {
+        Aux::Random::setSeed(seed, true);
+        auto G = METISGraphReader{}.read("input/PGPgiantcompo.graph");
+
+        if (weighted()) {
+            GraphTools::randomizeWeights(G, std::uniform_real_distribution<edgeweight>{0, 10});
+        }
+
+        GraphTools::sortEdgesByWeight(G);
+        EXPECT_TRUE(hasEdgesSortedByWeight(G, false));
+        EXPECT_TRUE(G.checkConsistency());
+        GraphTools::sortEdgesByWeight(G, true);
+        EXPECT_TRUE(hasEdgesSortedByWeight(G, true));
+        EXPECT_TRUE(G.checkConsistency());
+    }
+}
+
+TEST_P(GraphToolsGTest, testParallelSumEdgesIndexed) {
+    Aux::Random::setSeed(1, true);
+    NetworKit::count n = 20;
+    int maxWeight = n * n;
+
+    Graph G = ErdosRenyiGenerator{n, 0.01, directed()}.generate();
+    G.indexEdges(true);
+    auto sum = G.parallelSumForEdges([&](node, node, edgeweight ew) { return ew; });
+    EXPECT_LE(sum, maxWeight);
+}
+
+TEST_P(GraphToolsGTest, testEdgesRandomizer) {
+    if (!weighted())
+        return;
+    Aux::Random::setSeed(1, true);
+    Graph G1 = ErdosRenyiGenerator{2000, 0.3, directed()}.generate();
+    Graph G(G1, true, directed());
+    GraphTools::randomizeWeights(G);
+    edgeweight sum = G.parallelSumForEdges([&](node, node, edgeweight ew) { return ew; });
+    edgeweight average = sum / G.numberOfEdges();
+    edgeweight squareDiffSum = G.parallelSumForEdges(
+        [&](node, node, edgeweight ew) { return (ew - average) * (ew - average); });
+    // since we have a uniform distribution  between 0 and 1 the variance is 1/12
+    EXPECT_NEAR(1.0 / 12.0, squareDiffSum / G.numberOfEdges(), 1e-2);
+    EXPECT_NEAR(0.5, average, 1e-3);
+    if (!directed())
+        G.forEdges([&G](node u, node v) { EXPECT_EQ(G.weight(u, v), G.weight(v, u)); });
+    else
+        G.forNodes([&G](node u) {
+            G.forInEdgesOf(u,
+                           [&](node u, node v, edgeweight ew) { EXPECT_EQ(G.weight(v, u), ew); });
+        });
+}
+
+TEST_P(GraphToolsGTest, testEdgesRandomizerDeterminism) {
+    if (!weighted())
+        return;
+    Aux::Random::setSeed(1, true);
+    Graph G1 = ErdosRenyiGenerator{2000, 0.3, directed()}.generate();
+    Graph Ga(G1, true, directed());
+    Graph Gb(G1, true, directed());
+    Aux::Random::setSeed(1, true);
+    GraphTools::randomizeWeights(Ga);
+    Aux::Random::setSeed(1, true);
+    GraphTools::randomizeWeights(Gb);
+    Ga.forEdges([&Ga, &Gb](node u, node v) { EXPECT_EQ(Ga.weight(u, v), Gb.weight(u, v)); });
+}
+
+TEST_F(GraphToolsGTest, testIsBipartiteDirectedGraphThrows) {
+    Graph graph(0, false, true, false);
+    try {
+        GraphTools::isBipartite(graph);
+        FAIL() << "Expected std::runtime_error";
+    } catch (const std::runtime_error &e) {
+        EXPECT_STREQ(e.what(), "The graph is not an undirected graph!");
+    } catch (...) {
+        FAIL() << "Expected std::runtime_error but got a different exception.";
+    }
+}
+
+TEST_F(GraphToolsGTest, testIsBipartiteEmptyGraph) {
+    Graph graph;
+    EXPECT_TRUE(GraphTools::isBipartite(graph));
+}
+
+TEST_F(GraphToolsGTest, testIsBipartiteSingleNodesGraphs) {
+    for (count i = 1; i < 10; ++i) {
+        Graph graph;
+        for (count j = 0; j < i; ++j)
+            graph.addNodes(j);
+        EXPECT_TRUE(GraphTools::isBipartite(graph));
+    }
+}
+
+TEST_F(GraphToolsGTest, testIsBipartiteBinaryTreeGraphs) {
+    auto binaryTree = [](count numNodes) {
+        Graph graph(numNodes, true, false, true);
+        for (count i = 0; i < numNodes; ++i) {
+            count leftChild = 2 * i + 1;
+            count rightChild = 2 * i + 2;
+            if (leftChild < numNodes) {
+                graph.addEdge(i, leftChild, static_cast<double>(i));
+            }
+            if (rightChild < numNodes) {
+                graph.addEdge(i, rightChild, static_cast<double>(i));
+            }
+        }
+        return graph;
+    };
+    for (count i = 1; i < 10; ++i) {
+        Graph graph = binaryTree(i);
+        EXPECT_TRUE(GraphTools::isBipartite(graph));
+    }
+}
+
+TEST_F(GraphToolsGTest, testIsBipartiteCompleteGraphs) {
+    auto completeGraph = [&](count numNodes) {
+        Graph graph(numNodes, true);
+        for (count i = 0; i < numNodes; ++i) {
+            for (count j = i + 1; j < numNodes; ++j) {
+                graph.addEdge(i, j, static_cast<double>(j * (j + 1)));
+            }
+        }
+        return graph;
+    };
+
+    for (count numberOfNodes = 3; numberOfNodes <= 10; ++numberOfNodes) {
+        Graph graph = completeGraph(numberOfNodes);
+        EXPECT_FALSE(GraphTools::isBipartite(graph));
+    }
+}
+
+TEST_F(GraphToolsGTest, testIsBipartiteGrid5x5DistArchGraph) {
+    METISGraphReader reader;
+    Graph graph = reader.read("input/grid-5x5-dist-arch.graph");
+    EXPECT_TRUE(GraphTools::isBipartite(graph));
+}
+
+TEST_F(GraphToolsGTest, testIsBipartiteAirfoil1Graph) {
+    METISGraphReader reader;
+    Graph graph = reader.read("input/airfoil1.graph");
+    EXPECT_FALSE(GraphTools::isBipartite(graph));
+}
+
+TEST_F(GraphToolsGTest, testIsBipartiteHepThGraph) {
+    METISGraphReader reader;
+    Graph graph = reader.read("input/hep-th.graph");
+    EXPECT_FALSE(GraphTools::isBipartite(graph));
+}
+
+TEST_F(GraphToolsGTest, testIsBipartiteCompleteBipartiteGraphK3_3) {
+    Graph graph(6);
+    graph.addEdge(0, 3);
+    graph.addEdge(0, 4);
+    graph.addEdge(0, 5);
+    graph.addEdge(1, 3);
+    graph.addEdge(1, 4);
+    graph.addEdge(1, 5);
+    graph.addEdge(2, 3);
+    graph.addEdge(2, 4);
+    graph.addEdge(2, 5);
+
+    EXPECT_TRUE(GraphTools::isBipartite(graph));
+}
+
+TEST_F(GraphToolsGTest, testIsBipartiteDeleteNode) {
+    Graph graph(7);
+    graph.addEdge(0, 3);
+    graph.addEdge(0, 4);
+    graph.addEdge(0, 5);
+    graph.addEdge(1, 3);
+    graph.addEdge(1, 4);
+    graph.addEdge(1, 5);
+    graph.addEdge(2, 3);
+    graph.addEdge(2, 4);
+    graph.addEdge(2, 5);
+    // make graph non-bipartite
+    graph.addEdge(0, 6);
+    graph.addEdge(5, 6);
+
+    EXPECT_FALSE(GraphTools::isBipartite(graph));
+    // remove node 6 to make graph bipartite -> K_{3,3}
+    graph.removeNode(6);
+    EXPECT_TRUE(GraphTools::isBipartite(graph));
+}
+
+TEST_F(GraphToolsGTest, testIsBipartiteDeleteAndRestoreNodes) {
+    Graph graph(4);
+    graph.addEdge(0, 1);
+    graph.addEdge(0, 2);
+    graph.addEdge(0, 3);
+    graph.addEdge(1, 2);
+    graph.addEdge(1, 3);
+    graph.addEdge(2, 3);
+
+    EXPECT_FALSE(GraphTools::isBipartite(graph));
+    graph.removeNode(1);
+    EXPECT_FALSE(GraphTools::isBipartite(graph));
+    graph.restoreNode(1);
+    EXPECT_FALSE(GraphTools::isBipartite(graph));
+    graph.removeNode(2);
+    EXPECT_TRUE(GraphTools::isBipartite(graph));
 }
 
 } // namespace NetworKit

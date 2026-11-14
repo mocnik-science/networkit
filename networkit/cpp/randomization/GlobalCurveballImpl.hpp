@@ -4,7 +4,6 @@
  *  Created on: 26.05.2018
  *      Author: Manuel Penschuck <networkit@manuel.jetzt>
  */
-// networkit-format
 #ifndef RANDOMIZATION_GLOBAL_CURVEBALL_IMPL_H_
 #define RANDOMIZATION_GLOBAL_CURVEBALL_IMPL_H_
 
@@ -23,7 +22,6 @@
 #include <networkit/auxiliary/Timer.hpp>
 #include <networkit/base/Algorithm.hpp>
 #include <networkit/graph/Graph.hpp>
-#include <networkit/graph/GraphBuilder.hpp>
 #include <networkit/randomization/GlobalCurveball.hpp>
 
 #include "GlobalTradeSequence.hpp"
@@ -129,10 +127,8 @@ public:
             assert(current_pq.size() == inputGraph.numberOfEdges());
             trade_sequence.switchToRound(round);
 
-            count trade = 0;
             while (!current_pq.empty()) {
                 handler.assureRunning();
-                trade++;
 
                 // fetch and prepare information received via TFP
                 // fetch all messages addressed to next node pair
@@ -322,28 +318,28 @@ public:
 
     Graph getGraph() {
         const bool is_directed = inputGraph.isDirected();
-        GraphBuilder builder(inputGraph.numberOfNodes(), false, is_directed);
+        Graph outputGraph(inputGraph.numberOfNodes(), false, is_directed);
+        outputGraph.setEdgeCount(unsafe, prioQueue.size());
+        count selfLoops = 0;
 
         if (is_directed) {
             for (; !prioQueue.empty(); prioQueue.pop()) {
                 const auto top = prioQueue.top();
                 assert(allowSelfLoops || top.first != top.second);
-                builder.addHalfOutEdge(top.first, top.second);
-                builder.addHalfInEdge(top.second, top.first);
+                selfLoops += (top.first == top.second);
+                outputGraph.addPartialEdge(unsafe, top.first, top.second);
+                outputGraph.addPartialInEdge(unsafe, top.second, top.first);
             }
-
         } else {
-
             for (; !prioQueue.empty(); prioQueue.pop()) {
                 const auto top = prioQueue.top();
-                builder.addHalfEdge(top.first, top.second);
-
+                outputGraph.addPartialEdge(unsafe, top.first, top.second);
                 if (top.first < top.second)
                     prioQueue.emplace(top.second, top.second, top.first);
             }
         }
-
-        return builder.toGraph(false, true);
+        outputGraph.setNumberOfSelfLoops(unsafe, selfLoops);
+        return outputGraph;
     }
 
     const Graph &getInputGraph() const { return inputGraph; }

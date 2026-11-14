@@ -28,7 +28,6 @@ TEST_F(SpanningEdgeCentralityGTest, testOnToyGraph) {
     Graph G(n, false, false);
     G.indexEdges();
 
-
     G.addEdge(0, 2);
     G.addEdge(1, 2);
     G.addEdge(2, 3);

@@ -1,4 +1,3 @@
-// networkit-format
 
 #ifndef NETWORKIT_IO_EDGE_LIST_COVER_READER_HPP_
 #define NETWORKIT_IO_EDGE_LIST_COVER_READER_HPP_
@@ -26,7 +25,7 @@ public:
      * @param[in]  G     The graph for which the cover shall be read
      * @return The cover instance
      */
-    Cover read(const std::string &path, Graph &G) override;
+    Cover read(std::string_view path, Graph &G) override;
 
 private:
     node firstNode;

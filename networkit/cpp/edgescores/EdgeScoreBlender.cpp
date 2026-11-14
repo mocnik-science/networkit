@@ -9,8 +9,10 @@
 
 namespace NetworKit {
 
-EdgeScoreBlender::EdgeScoreBlender(const Graph &G, const std::vector< double > &attribute0, const std::vector< double > &attribute1, const std::vector< bool > &selection) :
-EdgeScore(G), attribute0(&attribute0), attribute1(&attribute1), selection(&selection) {}
+EdgeScoreBlender::EdgeScoreBlender(const Graph &G, const std::vector<double> &attribute0,
+                                   const std::vector<double> &attribute1,
+                                   const std::vector<bool> &selection)
+    : EdgeScore(G), attribute0(&attribute0), attribute1(&attribute1), selection(&selection) {}
 
 void EdgeScoreBlender::run() {
     if (!G->hasEdgeIds()) {
@@ -24,14 +26,6 @@ void EdgeScoreBlender::run() {
     });
 
     hasRun = true;
-}
-
-double EdgeScoreBlender::score(node, node) {
-    throw std::runtime_error("Not implemented: Use scores() instead.");
-}
-
-double EdgeScoreBlender::score(edgeid) {
-    throw std::runtime_error("Not implemented: Use scores() instead.");
 }
 
 } /* namespace NetworKit */

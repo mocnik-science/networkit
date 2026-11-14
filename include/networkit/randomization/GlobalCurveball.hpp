@@ -4,7 +4,6 @@
  *  Created on: 26.05.2018
  *      Author: Manuel Penschuck <networkit@manuel.jetzt>
  */
-// networkit-format
 
 #ifndef NETWORKIT_RANDOMIZATION_GLOBAL_CURVEBALL_HPP_
 #define NETWORKIT_RANDOMIZATION_GLOBAL_CURVEBALL_HPP_
@@ -14,8 +13,6 @@
 
 #include <networkit/base/Algorithm.hpp>
 #include <networkit/graph/Graph.hpp>
-
-#include <tlx/define/deprecated.hpp>
 
 namespace NetworKit {
 
@@ -60,10 +57,6 @@ public:
      * graph, but with randomized neighbourhoods.
      */
     Graph getGraph();
-
-    std::string TLX_DEPRECATED(toString() const final);
-
-    bool TLX_DEPRECATED(isParallel() const final) { return false; }
 
 private:
     std::unique_ptr<CurveballDetails::GlobalCurveballImpl> impl;

@@ -4,7 +4,8 @@
 
 namespace NetworKit {
 
-CoverF1Similarity::CoverF1Similarity(const Graph &G, const Cover &C, const Cover &reference) : LocalCoverEvaluation(G, C), reference(&reference) {}
+CoverF1Similarity::CoverF1Similarity(const Graph &G, const Cover &C, const Cover &reference)
+    : LocalCoverEvaluation(G, C), reference(&reference) {}
 
 void CoverF1Similarity::run() {
     hasRun = false;
@@ -96,4 +97,4 @@ void CoverF1Similarity::run() {
     hasRun = true;
 }
 
-}
+} // namespace NetworKit

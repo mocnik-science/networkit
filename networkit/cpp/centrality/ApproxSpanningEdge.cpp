@@ -5,15 +5,17 @@
  *     Authors: Eugenio Angriman <angrimae@hu-berlin.de>
  */
 
-// networkit-format
-
 #include <cassert>
 #include <cmath>
 #include <omp.h>
 #include <queue>
 
+#include <tlx/unused.hpp>
+
 #include <networkit/centrality/ApproxSpanningEdge.hpp>
 #include <networkit/components/BiconnectedComponents.hpp>
+
+#include <tlx/unused.hpp>
 
 namespace NetworKit {
 
@@ -181,6 +183,7 @@ void ApproxSpanningEdge::run() {
             sequences.push_back(std::move(sequence));
             sequence.clear();
             assert(nVisited == curComponent.size());
+            tlx::unused(nVisited);
         }
     }
 

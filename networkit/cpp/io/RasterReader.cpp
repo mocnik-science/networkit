@@ -14,13 +14,12 @@
 
 namespace NetworKit {
 
-RasterReader::RasterReader(double normalizationFactor): normalizationFactor(normalizationFactor) {}
+RasterReader::RasterReader(double normalizationFactor) : normalizationFactor(normalizationFactor) {}
 
-std::pair<std::vector<double>, std::vector<double>>
-RasterReader::read(const std::string& path) {
+std::pair<std::vector<double>, std::vector<double>> RasterReader::read(std::string_view path) {
     DEBUG("start reading raster file...");
 
-    std::ifstream file(path);
+    std::ifstream file(path.data());
     Aux::enforceOpened(file);
     std::string line;
 
@@ -34,7 +33,7 @@ RasterReader::read(const std::string& path) {
     auto it = line.begin() + 14; // ignore the first 14 characters
     auto end = line.end();
     std::tie(val, it) = Aux::Parsing::strTo<double>(it, end);
-    uint64_t ncols = (uint64_t) val;
+    uint64_t ncols = (uint64_t)val;
     DEBUG("line: ", line, "; nrows: ", ncols);
 
     // ** read number of rows
@@ -42,7 +41,7 @@ RasterReader::read(const std::string& path) {
     it = line.begin() + 14; // ignore the first 14 characters
     end = line.end();
     std::tie(val, it) = Aux::Parsing::strTo<double>(it, end);
-    uint64_t nrows = (uint64_t) val;
+    uint64_t nrows = (uint64_t)val;
     DEBUG("line: ", line, "; ncols: ", nrows);
 
     // ** ignore remaining header info
@@ -50,20 +49,21 @@ RasterReader::read(const std::string& path) {
         std::getline(file, line);
     }
 
-
     // data for main loop
-    double xdelta = 1.0;// / (double) ncols; // width of each column
-    double ydelta = 1.0;// / (double) nrows; // height of each row
-    double xlb = 0.0;                     // lower bound in x-direction
-    double ylb = 1.0 - ydelta;            // lower bound in y-direction
-    double xub = xdelta;                  // upper bound in x-direction
-    double yub = 1.0;                     // upper bound in y-direction
-    double validate = 0.0;                // to validate the sum of the values
+    double xdelta = 1.0;       // / (double) ncols; // width of each column
+    double ydelta = 1.0;       // / (double) nrows; // height of each row
+    double xlb = 0.0;          // lower bound in x-direction
+    double ylb = 1.0 - ydelta; // lower bound in y-direction
+    double xub = xdelta;       // upper bound in x-direction
+    double yub = 1.0;          // upper bound in y-direction
+#ifndef NDEBUG
+    double validate = 0.0; // to validate the sum of the values
+#endif
 
     DEBUG("xdelta: ", xdelta, ", ydelta: ", ydelta);
 
-    std::vector<double> xcoords;          // stores the x-coordinates of generated points
-    std::vector<double> ycoords;          // stores the y-coordinates of generated points
+    std::vector<double> xcoords; // stores the x-coordinates of generated points
+    std::vector<double> ycoords; // stores the y-coordinates of generated points
 
     for (uint64_t row = 0; row < nrows; ++row) {
         std::getline(file, line);
@@ -73,11 +73,13 @@ RasterReader::read(const std::string& path) {
         for (uint64_t col = 0; col < ncols; ++col) {
             // read next number
             std::tie(val, it) = Aux::Parsing::strTo<double>(it, end);
+#ifndef NDEBUG
             validate += val;
+#endif
 
             // divide by "normalizer" and round down
             val *= normalizationFactor;
-            uint64_t numPointsInCell = (uint64_t) std::round(val);
+            uint64_t numPointsInCell = (uint64_t)std::round(val);
 
             for (uint64_t i = 0; i < numPointsInCell; ++i) {
                 // insert random coordinate into coordinate arrays
@@ -96,7 +98,10 @@ RasterReader::read(const std::string& path) {
         yub = ylb;
         ylb -= ydelta;
     }
-    DEBUG("Created ", xcoords.size(), " 2D points, validation: ", validate, " vs ", xcoords.size() / normalizationFactor);
+#ifndef NDEBUG
+    DEBUG("Created ", xcoords.size(), " 2D points, validation: ", validate, " vs ",
+          xcoords.size() / normalizationFactor);
+#endif
     return std::make_pair(xcoords, ycoords);
 }
 

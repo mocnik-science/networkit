@@ -10,22 +10,22 @@
 #include <algorithm>
 #include <tuple>
 
+#include <networkit/auxiliary/Parallel.hpp>
+#include <networkit/auxiliary/Random.hpp>
 #include <networkit/graph/Graph.hpp>
 #include <networkit/graph/GraphBuilder.hpp>
 #include <networkit/graph/GraphTools.hpp>
-#include <networkit/auxiliary/Random.hpp>
-#include <networkit/auxiliary/Parallel.hpp>
 
 namespace NetworKit {
 
-class GraphBuilderAutoCompleteGTest: public testing::TestWithParam< std::tuple<bool, bool, bool> > {
+class GraphBuilderAutoCompleteGTest : public testing::TestWithParam<std::tuple<bool, bool>> {
 public:
     virtual void SetUp();
 
 protected:
     GraphBuilder bHouse;
-    std::vector< std::pair<node, node> > houseEdgesOut;
-    std::vector< std::vector<edgeweight> > Ahouse;
+    std::vector<std::pair<node, node>> houseEdgesOut;
+    std::vector<std::vector<edgeweight>> Ahouse;
     count n_house;
     count m_house;
 
@@ -36,23 +36,14 @@ protected:
 
     bool isWeighted() const;
     bool isDirected() const;
-    bool useParallel() const;
 
     GraphBuilder createGraphBuilder(count n = 0) const;
-    Graph toGraph(GraphBuilder& b) const;
+    Graph toGraph(GraphBuilder &b) const;
 };
 
-INSTANTIATE_TEST_SUITE_P(InstantiationName, GraphBuilderAutoCompleteGTest, testing::Values(
-    std::make_tuple(false, false, false), // weighted, directed, parallel
-    std::make_tuple(true, false, false),
-    std::make_tuple(false, true, false),
-    std::make_tuple(true, true, false),
-
-    std::make_tuple(false, false, true),
-    std::make_tuple(true, false, true),
-    std::make_tuple(false, true, true),
-    std::make_tuple(true, true, true)
-));
+INSTANTIATE_TEST_SUITE_P(InstantiationName, GraphBuilderAutoCompleteGTest,
+                         testing::Values(std::make_pair(false, false), std::make_pair(true, false),
+                                         std::make_pair(false, true), std::make_pair(true, true)));
 
 bool GraphBuilderAutoCompleteGTest::isWeighted() const {
     return std::get<0>(GetParam());
@@ -61,16 +52,12 @@ bool GraphBuilderAutoCompleteGTest::isDirected() const {
     return std::get<1>(GetParam());
 }
 
-bool GraphBuilderAutoCompleteGTest::useParallel() const {
-    return std::get<2>(GetParam());
-}
-
 GraphBuilder GraphBuilderAutoCompleteGTest::createGraphBuilder(count n) const {
     return GraphBuilder(n, isWeighted(), isDirected());
 }
 
-Graph GraphBuilderAutoCompleteGTest::toGraph(GraphBuilder& b) const {
-    return b.toGraph(true, useParallel());
+Graph GraphBuilderAutoCompleteGTest::toGraph(GraphBuilder &b) const {
+    return b.completeGraph();
 }
 
 void GraphBuilderAutoCompleteGTest::SetUp() {
@@ -93,22 +80,13 @@ void GraphBuilderAutoCompleteGTest::SetUp() {
     m_house = 8;
 
     bHouse = createGraphBuilder(5);
-    houseEdgesOut = {
-        {3, 1},
-        {1, 0},
-        {0, 2},
-        {2, 1},
-        {1, 4},
-        {4, 3},
-        {3, 2},
-        {2, 4}
-    };
+    houseEdgesOut = {{3, 1}, {1, 0}, {0, 2}, {2, 1}, {1, 4}, {4, 3}, {3, 2}, {2, 4}};
     Ahouse = {n_house, std::vector<edgeweight>(n_house, 0.0)};
     edgeweight ew = 1.0;
-    for (auto& e : houseEdgesOut) {
+    for (auto &e : houseEdgesOut) {
         node u = e.first;
         node v = e.second;
-        bHouse.addHalfOutEdge(u, v, ew);
+        bHouse.addHalfEdge(u, v, ew);
 
         Ahouse[u][v] = ew;
         if (!bHouse.isDirected()) {
@@ -152,7 +130,6 @@ TEST_P(GraphBuilderAutoCompleteGTest, testAddNode) {
     ASSERT_EQ(0u, G.numberOfEdges());
     ASSERT_FALSE(G.isEmpty());
 }
-
 
 /** NODE PROPERTIES **/
 
@@ -207,7 +184,6 @@ TEST_P(GraphBuilderAutoCompleteGTest, testDegreeOut) {
     }
 }
 
-
 /** EDGE MODIFIERS **/
 
 TEST_P(GraphBuilderAutoCompleteGTest, testAddHalfEdge) {
@@ -261,7 +237,6 @@ TEST_P(GraphBuilderAutoCompleteGTest, testAddHalfEdge) {
     }
 }
 
-
 /** GLOBAL PROPERTIES **/
 
 TEST_P(GraphBuilderAutoCompleteGTest, testIsWeighted) {
@@ -289,7 +264,6 @@ TEST_P(GraphBuilderAutoCompleteGTest, testUpperNodeIdBound) {
     Graph Ghouse = toGraph(this->bHouse);
     ASSERT_EQ(5u, Ghouse.upperNodeIdBound());
 }
-
 
 /** EDGE ATTRIBUTES **/
 
@@ -338,7 +312,8 @@ TEST_P(GraphBuilderAutoCompleteGTest, testSetWeight) {
             ASSERT_EQ(2.718, G.weight(3, 4));
             ASSERT_EQ(5.243, G.weight(4, 3));
         } else {
-            // we have actually 2 edges in both direction. It is not defined which weight is returned.
+            // we have actually 2 edges in both direction. It is not defined which weight is
+            // returned.
             ASSERT_TRUE(G.weight(3, 4) == 2.718 || G.weight(3, 4) == 5.243);
             ASSERT_TRUE(G.weight(4, 3) == 2.718 || G.weight(4, 3) == 5.243);
         }
@@ -347,7 +322,6 @@ TEST_P(GraphBuilderAutoCompleteGTest, testSetWeight) {
         ASSERT_EQ(3.14, G.weight(8, 8));
     }
 }
-
 
 /** toGraph **/
 
@@ -366,14 +340,16 @@ TEST_P(GraphBuilderAutoCompleteGTest, testSameAsGraph) {
 
         G_expected.forNodes([&](node v) {
             double p = Aux::Random::probability();
-            // if we change edges we have to keep in mind, that GraphBuilder is designed to keep only half-edges.
-            // e.g. if we have already added an edge v -> u, changing the weight of u -> v might create a new edge in the builder but change the existing edge in G_expected (does not apply for directed graphs)
+            // if we change edges we have to keep in mind, that GraphBuilder is designed to keep
+            // only half-edges. e.g. if we have already added an edge v -> u, changing the weight of
+            // u -> v might create a new edge in the builder but change the existing edge in
+            // G_expected (does not apply for directed graphs)
 
             if (p < 0.1) { // new node
                 n++;
                 b.addNode();
                 G_expected.addNode();
-            } else { // new edge
+            } else {                                     // new edge
                 node u = Aux::Random::integer(v, n - 1); // self-loops possible
                 edgeweight ew = Aux::Random::probability();
                 b.addHalfEdge(v, u, ew);
@@ -408,8 +384,8 @@ TEST_P(GraphBuilderAutoCompleteGTest, testSameAsGraph) {
             ASSERT_EQ(G_expected.degreeIn(v), G_actual.degreeIn(v));
             ASSERT_EQ(G_expected.degreeOut(v), G_actual.degreeOut(v));
             ASSERT_NEAR(G_expected.weightedDegree(v), G_actual.weightedDegree(v), epsilon);
-            ASSERT_NEAR(G_expected.weightedDegree(v, true),
-                        G_actual.weightedDegree(v, true), epsilon);
+            ASSERT_NEAR(G_expected.weightedDegree(v, true), G_actual.weightedDegree(v, true),
+                        epsilon);
         });
         G_expected.forEdges([&](node u, node v, edgeweight ew) {
             ASSERT_TRUE(G_actual.hasEdge(u, v));
@@ -417,12 +393,8 @@ TEST_P(GraphBuilderAutoCompleteGTest, testSameAsGraph) {
         });
 
         // make sure that G_actual has not more nodes/edges than G_expected
-        G_actual.forNodes([&](node v) {
-            ASSERT_TRUE(G_expected.hasNode(v));
-        });
-        G_actual.forEdges([&](node u, node v) {
-            ASSERT_TRUE(G_expected.hasEdge(u, v));
-        });
+        G_actual.forNodes([&](node v) { ASSERT_TRUE(G_expected.hasNode(v)); });
+        G_actual.forEdges([&](node u, node v) { ASSERT_TRUE(G_expected.hasEdge(u, v)); });
     }
 }
 
@@ -434,9 +406,7 @@ TEST_P(GraphBuilderAutoCompleteGTest, testForValidStateAfterToGraph) {
     ASSERT_EQ(0u, this->bHouse.upperNodeIdBound());
     ASSERT_EQ(isWeighted(), this->bHouse.isWeighted());
     ASSERT_EQ(isDirected(), this->bHouse.isDirected());
-    this->bHouse.forNodes([&](node) {
-        FAIL();
-    });
+    this->bHouse.forNodes([&](node) { FAIL(); });
 
     Graph G1 = toGraph(this->bHouse);
     ASSERT_TRUE(G1.isEmpty());
@@ -464,6 +434,41 @@ TEST_P(GraphBuilderAutoCompleteGTest, testForValidStateAfterToGraph) {
     }
 }
 
+TEST_P(GraphBuilderAutoCompleteGTest, testSwapNeighbours) {
+    GraphBuilder GB1(5, isWeighted(), isDirected());
+
+    GB1.addHalfEdge(0, 1);
+    GB1.addHalfEdge(0, 3);
+    GB1.addHalfEdge(1, 3);
+    GB1.addHalfEdge(1, 4);
+    GB1.addHalfEdge(2, 4);
+
+    std::vector<node> new_neighbours = {0, 2, 4};
+    std::vector<edgeweight> new_weights;
+    if (isWeighted()) {
+        new_weights = {1.2, 2.4, 4.8};
+    } else {
+        new_weights = {1., 1., 1.};
+    }
+    GB1.swapNeighborhood(0, new_neighbours, new_weights, true);
+    Graph G = GB1.completeGraph();
+
+    EXPECT_TRUE(G.hasEdge(0, 0));
+    EXPECT_TRUE(G.hasEdge(0, 2));
+    EXPECT_TRUE(G.hasEdge(0, 4));
+    EXPECT_FALSE(G.hasEdge(0, 1));
+    EXPECT_FALSE(G.hasEdge(0, 3));
+    if (isWeighted()) {
+        EXPECT_EQ(G.weight(0, 0), 1.2);
+        EXPECT_EQ(G.weight(0, 2), 2.4);
+        EXPECT_EQ(G.weight(0, 4), 4.8);
+    } else {
+        EXPECT_EQ(G.weight(0, 0), 1.);
+        EXPECT_EQ(G.weight(0, 2), 1.);
+        EXPECT_EQ(G.weight(0, 4), 1.);
+    }
+}
+
 /** NODE ITERATORS **/
 
 TEST_P(GraphBuilderAutoCompleteGTest, testForNodes) {
@@ -482,11 +487,8 @@ TEST_P(GraphBuilderAutoCompleteGTest, testForNodes) {
 }
 
 TEST_P(GraphBuilderAutoCompleteGTest, testParallelForNodes) {
-    std::vector<node> visited;
-    this->bHouse.parallelForNodes([&](node u) {
-        #pragma omp critical
-        visited.push_back(u);
-    });
+    std::vector<node> visited(bHouse.upperNodeIdBound());
+    this->bHouse.parallelForNodes([&](node u) { visited[u] = u; });
 
     Aux::Parallel::sort(visited.begin(), visited.end());
 
@@ -500,7 +502,7 @@ TEST_P(GraphBuilderAutoCompleteGTest, testForNodePairs) {
     count n = 10;
     auto b = createGraphBuilder(n);
 
-    std::vector< std::vector<bool> > visited(n, std::vector<bool>(n, false));
+    std::vector<std::vector<bool>> visited(n, std::vector<bool>(n, false));
     b.forNodePairs([&](node u, node v) {
         if (visited[u][v] || visited[v][u]) {
             FAIL();
@@ -524,7 +526,7 @@ TEST_P(GraphBuilderAutoCompleteGTest, testParallelForNodePairs) {
     count n = 10;
     auto b = createGraphBuilder(n);
 
-    std::vector< std::vector<bool> > visited(n, std::vector<bool>(n, false));
+    std::vector<std::vector<bool>> visited(n, std::vector<bool>(n, false));
     b.forNodePairs([&](node u, node v) {
         if (visited[u][v]) {
             FAIL();

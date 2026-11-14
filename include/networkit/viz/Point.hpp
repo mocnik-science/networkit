@@ -5,8 +5,6 @@
  *      Author: Henning, Manuel Penschuck <networkit@manuel.jetzt>
  */
 
-// networkit-format
-
 #ifndef NETWORKIT_VIZ_POINT_HPP_
 #define NETWORKIT_VIZ_POINT_HPP_
 
@@ -63,7 +61,7 @@ public:
     Storage(Storage &&) noexcept = default;
     Storage &operator=(Storage &&) noexcept = default;
 
-    explicit Storage(count dimension) : data(dimension) {}
+    explicit Storage(count dimension) : data(dimension) { data.fill(0); }
     explicit Storage(const std::vector<T> &values) : data(values.size()) {
         std::copy(values.begin(), values.end(), data.begin());
     }
@@ -291,9 +289,6 @@ public:
 
         return true;
     }
-
-    /// Returns false, if all coordinates match
-    bool operator!=(const Point &other) const noexcept { return !(*this == other); }
 
     /// Compute element-wise min and returns new Point
     Point min(const Point &other) const {

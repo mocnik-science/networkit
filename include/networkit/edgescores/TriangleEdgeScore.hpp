@@ -5,8 +5,6 @@
  *      Author: Gerd Lindner, Michael Hamann
  */
 
-// networkit-format
-
 #ifndef NETWORKIT_EDGESCORES_TRIANGLE_EDGE_SCORE_HPP_
 #define NETWORKIT_EDGESCORES_TRIANGLE_EDGE_SCORE_HPP_
 
@@ -31,8 +29,6 @@ class TriangleEdgeScore final : public EdgeScore<count> {
 
 public:
     TriangleEdgeScore(const Graph &G);
-    count score(edgeid eid) override;
-    count score(node u, node v) override;
     void run() override;
 };
 

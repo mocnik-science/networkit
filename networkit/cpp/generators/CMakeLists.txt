@@ -1,7 +1,9 @@
 networkit_add_module(generators
     BarabasiAlbertGenerator.cpp
     ChungLuGenerator.cpp
+    ChungLuGeneratorAlamEtAl.cpp
     ClusteredRandomGraphGenerator.cpp
+    ConfigurationModel.cpp
     DorogovtsevMendesGenerator.cpp
     DynamicBarabasiAlbertGenerator.cpp
     DynamicDGSParser.cpp
@@ -28,7 +30,7 @@ networkit_add_module(generators
     )
 
 networkit_module_link_modules(generators
-        auxiliary base dynamics geometric graph structures)
+        auxiliary dynamics geometric graph randomization structures)
 
 add_subdirectory(quadtree)
 add_subdirectory(test)

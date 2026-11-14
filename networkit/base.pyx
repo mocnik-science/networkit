@@ -1,6 +1,24 @@
 # distutils: language=c++
 
-cdef class Algorithm:
+
+cdef class _CythonParentClass:
+	""" Abstract base class for Cython 
+	The purpose of this class is to provide a single combined base cdef class for all classes that we use in this project.
+	Cython cannot handle multiple inheritance without this single common base class.
+	"""
+	def __init__(self, *args, **namedargs):
+		if type(self) == _CythonParentClass:
+			raise RuntimeError("Error, you may not use _CythonParentClass directly, use a sub-class instead")
+
+	def __cinit__(self, *args, **namedargs):
+		self._this = NULL
+
+	def __dealloc__(self):
+		if self._this != NULL:
+			del self._this
+		self._this = NULL
+
+cdef class Algorithm(_CythonParentClass):
 	""" Abstract base class for algorithms """
 	def __init__(self, *args, **namedargs):
 		if type(self) == Algorithm:
@@ -16,11 +34,13 @@ cdef class Algorithm:
 
 	def run(self):
 		"""
+		run()
+
 		Executes the algorithm.
 
-		Returns:
-		--------
-		Algorithm
+		Returns
+		-------
+		networkit.base.Algorithm
 			self
 		"""
 		if self._this == NULL:
@@ -31,39 +51,15 @@ cdef class Algorithm:
 
 	def hasFinished(self):
 		"""
+		hasFinished()
+
 		States whether an algorithm has already run.
 
-		Returns:
-		--------
+		Returns
+		-------
 		bool
 			True if Algorithm has finished.
 		"""
 		if self._this == NULL:
 			raise RuntimeError("Error, object not properly initialized")
 		return self._this.hasFinished()
-
-	def toString(self):
-		""" Get string representation.
-
-		Returns:
-		--------
-		string
-			String representation of algorithm and parameters.
-		"""
-		if self._this == NULL:
-			raise RuntimeError("Error, object not properly initialized")
-		return self._this.toString().decode("utf-8")
-
-
-	def isParallel(self):
-		"""
-		Returns:
-		--------
-		bool
-			True if algorithm can run multi-threaded.
-		"""
-		from warning import warn
-		warn("isParallel() is deprecated and will be removed in upcoming releases.")
-		if self._this == NULL:
-			raise RuntimeError("Error, object not properly initialized")
-		return self._this.isParallel()

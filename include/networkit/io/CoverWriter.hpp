@@ -1,4 +1,3 @@
-// networkit-format
 
 #ifndef NETWORKIT_IO_COVER_WRITER_HPP_
 #define NETWORKIT_IO_COVER_WRITER_HPP_
@@ -15,7 +14,7 @@ namespace NetworKit {
 
 class CoverWriter final {
 public:
-    void write(Cover &zeta, const std::string &path) const;
+    void write(Cover &zeta, std::string_view path) const;
 };
 } // namespace NetworKit
 

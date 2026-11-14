@@ -16,6 +16,7 @@
 
 #include <tlx/cmdline_parser.hpp>
 
+#include <networkit/GlobalState.hpp>
 #include <networkit/auxiliary/Log.hpp>
 #include <networkit/auxiliary/Parallelism.hpp>
 
@@ -29,17 +30,19 @@ struct Options {
     bool modeBenchmarks{false};
     bool modeRunnable{false};
 
-    bool parse(int argc, char* argv[]) {
+    bool parse(int argc, char *argv[]) {
         tlx::CmdlineParser parser;
 
-        parser.add_bool('t', "tests",      modeTests,      "Run unit tests");
-        parser.add_bool('r', "run",        modeRunnable,   "Run unit tests which don't use assertions");
-        parser.add_bool('d', "debug",      modeDebug,      "Run tests to debug some algorithms");
+        parser.add_bool('t', "tests", modeTests, "Run unit tests");
+        parser.add_bool('r', "run", modeRunnable, "Run unit tests which don't use assertions");
+        parser.add_bool('d', "debug", modeDebug, "Run tests to debug some algorithms");
         parser.add_bool('b', "benchmarks", modeBenchmarks, "Run benchmarks");
 
-        parser.add_unsigned("threads",     numThreads,     "set the maximum number of threads; 0 (=default) uses OMP default");
-        parser.add_string("loglevel",      loglevel,       "set the log level (TRACE|DEBUG|INFO|WARN|ERROR|FATAL)");
-        parser.add_bool("srcloc",          sourceLocation, "print source location of log messages");
+        parser.add_unsigned("threads", numThreads,
+                            "set the maximum number of threads; 0 (=default) uses OMP default");
+        parser.add_string("loglevel", loglevel,
+                          "set the log level (TRACE|DEBUG|INFO|WARN|ERROR|FATAL)");
+        parser.add_bool("srcloc", sourceLocation, "print source location of log messages");
 
         if (!parser.process(argc, argv, std::cerr))
             return false;
@@ -64,12 +67,13 @@ int main(int argc, char *argv[]) {
 
     // Configure logging
     Aux::Log::setLogLevel(options.loglevel);
-    Aux::Log::Settings::setPrintLocation(options.sourceLocation);
+    NetworKit::GlobalState::setPrintLocation(options.sourceLocation);
     std::cout << "Loglevel: " << Aux::Log::getLogLevel() << "\n";
 #ifdef NETWORKIT_RELEASE_LOGGING
     if (options.loglevel == "TRACE" || options.loglevel == "DEBUG")
         std::cout << "WARNING: TRACE and DEBUG messages are missing"
-                     " in NETWORKIT_RELEASE_LOGGING builds" << std::endl;
+                     " in NETWORKIT_RELEASE_LOGGING builds"
+                  << std::endl;
 #endif
 
     // Configure parallelism
@@ -82,12 +86,10 @@ int main(int argc, char *argv[]) {
 
     // Configure test filter
     {
-        auto setFilter = [&](const char *filter) {
-            ::testing::GTEST_FLAG(filter) = filter;
-        };
+        auto setFilter = [&](const char *filter) { ::testing::GTEST_FLAG(filter) = filter; };
 
         if (options.modeTests) {
-            setFilter("*Test.test*");
+            setFilter("*Test.test*:*Test/*:test*");
         } else if (options.modeDebug) {
             setFilter("*Test.debug*");
         } else if (options.modeBenchmarks) {

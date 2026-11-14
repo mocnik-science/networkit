@@ -3,6 +3,7 @@ import nbformat
 import os
 import sys
 from nbconvert.preprocessors import ExecutePreprocessor
+import asyncio
 
 def run_notebook(path):
     nb_name, _ = os.path.splitext(os.path.basename(path))
@@ -17,6 +18,12 @@ def run_notebook(path):
     proc = ExecutePreprocessor(timeout=600, kernel_name='python3')
     proc.allow_errors = True
 
+    # On Windows, the Preprocessor throws a NotImplementedError
+    # This check is inserted as a workaround
+    # See: https://github.com/jupyter/nbconvert/issues/1372
+    if sys.platform.startswith('win'):
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
     proc.preprocess(nb, {'metadata': {'path': dirname}})
     errors = []
     for cell in nb.cells:
@@ -29,6 +36,7 @@ def run_notebook(path):
         return 0
     else:
         print(" " + path + " test exited with errors.")
+        print(errors)
         return 1
 
 if __name__ == '__main__':

@@ -4,15 +4,12 @@
  *  Created on: 21.08.2018
  *      Author: Manuel Penschuck <networkit@manuel.jetzt>
  */
-// networkit-format
 
 #ifndef NETWORKIT_RANDOMIZATION_DEGREE_PRESERVING_SHUFFLE_HPP_
 #define NETWORKIT_RANDOMIZATION_DEGREE_PRESERVING_SHUFFLE_HPP_
 
 #include <networkit/base/Algorithm.hpp>
 #include <networkit/graph/Graph.hpp>
-
-#include <tlx/define/deprecated.hpp>
 
 namespace NetworKit {
 
@@ -68,9 +65,11 @@ public:
      */
     const std::vector<node> &getPermutation() const noexcept { return permutation; }
 
-    std::string TLX_DEPRECATED(toString() const final);
-
-    bool TLX_DEPRECATED(isParallel() const final) { return true; }
+    static Graph shuffleGraph(const Graph &input) {
+        DegreePreservingShuffle algo(input);
+        algo.run();
+        return algo.getGraph();
+    }
 
 private:
     const Graph *G;

@@ -4,7 +4,6 @@
  *  Created on: Apr 10, 2013
  *      Author: Henning
  */
-// networkit-format
 
 #ifndef NETWORKIT_VIZ_POSTSCRIPT_WRITER_HPP_
 #define NETWORKIT_VIZ_POSTSCRIPT_WRITER_HPP_
@@ -43,7 +42,7 @@ public:
      * @note We assume g.upperNodeIdBound() == coordinates.size();
      */
     void write(const Graph &g, const std::vector<Point2D> &coordinates, const Partition &clustering,
-               const std::string &filename);
+               std::string_view filename);
 
     /**
      * Outputs an EPS file with name @a filename of the graph @a g with 2D coordinates.
@@ -53,8 +52,7 @@ public:
      *
      * @note We assume g.upperNodeIdBound() == coordinates.size();
      */
-    void write(const Graph &g, const std::vector<Point2D> &coordinates,
-               const std::string &filename);
+    void write(const Graph &g, const std::vector<Point2D> &coordinates, std::string_view filename);
 
 private:
     bool wrapAround;

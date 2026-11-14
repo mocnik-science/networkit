@@ -5,64 +5,71 @@
  *      Author: Christian Staudt (christian.staudt@kit.edu)
  */
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <array>
 #include <cassert>
 #include <chrono>
-#include <iostream>
+#include <cstring>
+#include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <limits>
 #include <unordered_set>
 #include <vector>
 
-#include <networkit/io/METISGraphReader.hpp>
-#include <networkit/io/METISGraphWriter.hpp>
-#include <networkit/io/PartitionWriter.hpp>
-#include <networkit/io/PartitionReader.hpp>
-#include <networkit/io/GraphIO.hpp>
-#include <networkit/io/DotGraphWriter.hpp>
-#include <networkit/io/DGSReader.hpp>
-#include <networkit/io/EdgeListWriter.hpp>
-#include <networkit/io/EdgeListPartitionReader.hpp>
-#include <networkit/io/SNAPGraphReader.hpp>
-#include <networkit/io/SNAPEdgeListPartitionReader.hpp>
-#include <networkit/io/SNAPGraphWriter.hpp>
-#include <networkit/io/EdgeListReader.hpp>
-#include <networkit/io/KONECTGraphReader.hpp>
-#include <networkit/io/GMLGraphWriter.hpp>
-#include <networkit/io/EdgeListCoverReader.hpp>
+#include <networkit/algebraic/CSRMatrix.hpp>
+#include <networkit/algebraic/MatrixTools.hpp>
+#include <networkit/generators/ErdosRenyiGenerator.hpp>
+#include <networkit/io/BinaryEdgeListPartitionReader.hpp>
+#include <networkit/io/BinaryEdgeListPartitionWriter.hpp>
+#include <networkit/io/BinaryPartitionReader.hpp>
+#include <networkit/io/BinaryPartitionWriter.hpp>
 #include <networkit/io/CoverReader.hpp>
 #include <networkit/io/CoverWriter.hpp>
+#include <networkit/io/DGSReader.hpp>
+#include <networkit/io/DotGraphWriter.hpp>
+#include <networkit/io/EdgeListCoverReader.hpp>
+#include <networkit/io/EdgeListPartitionReader.hpp>
+#include <networkit/io/EdgeListReader.hpp>
+#include <networkit/io/EdgeListWriter.hpp>
 #include <networkit/io/GMLGraphReader.hpp>
+#include <networkit/io/GMLGraphWriter.hpp>
+#include <networkit/io/GraphIO.hpp>
 #include <networkit/io/GraphToolBinaryReader.hpp>
 #include <networkit/io/GraphToolBinaryWriter.hpp>
-#include <networkit/io/ThrillGraphBinaryWriter.hpp>
-#include <networkit/io/ThrillGraphBinaryReader.hpp>
-#include <networkit/io/BinaryPartitionWriter.hpp>
-#include <networkit/io/BinaryPartitionReader.hpp>
-#include <networkit/io/BinaryEdgeListPartitionWriter.hpp>
-#include <networkit/io/BinaryEdgeListPartitionReader.hpp>
+#include <networkit/io/KONECTGraphReader.hpp>
+#include <networkit/io/METISGraphReader.hpp>
+#include <networkit/io/METISGraphWriter.hpp>
+#include <networkit/io/MTXGraphReader.hpp>
+#include <networkit/io/MatrixMarketReader.hpp>
 #include <networkit/io/NetworkitBinaryGraph.hpp>
 #include <networkit/io/NetworkitBinaryReader.hpp>
 #include <networkit/io/NetworkitBinaryWriter.hpp>
-#include <networkit/generators/ErdosRenyiGenerator.hpp>
+#include <networkit/io/PartitionReader.hpp>
+#include <networkit/io/PartitionWriter.hpp>
+#include <networkit/io/RBMatrixReader.hpp>
+#include <networkit/io/SNAPGraphReader.hpp>
+#include <networkit/io/SNAPGraphWriter.hpp>
+#include <networkit/io/ThrillGraphBinaryReader.hpp>
+#include <networkit/io/ThrillGraphBinaryWriter.hpp>
 
-#include <networkit/community/GraphClusteringTools.hpp>
 #include <networkit/auxiliary/Log.hpp>
 #include <networkit/community/ClusteringGenerator.hpp>
-#include <networkit/structures/Partition.hpp>
+#include <networkit/community/GraphClusteringTools.hpp>
 #include <networkit/community/Modularity.hpp>
 #include <networkit/community/PLP.hpp>
 #include <networkit/dynamics/GraphDifference.hpp>
+#include <networkit/structures/Partition.hpp>
 
 #include <tlx/unused.hpp>
 
 namespace NetworKit {
 
-class IOGTest: public testing::Test {};
+class IOGTest : public testing::Test {};
 
-TEST_F(IOGTest, testEdgeListWriter){
+TEST_F(IOGTest, testEdgeListWriter) {
     ErdosRenyiGenerator graphGen(100, 0.1, true);
     Graph G = graphGen.generate();
 
@@ -80,10 +87,21 @@ TEST_F(IOGTest, testEdgeListWriter){
 
     EdgeListReader reader(' ', 1, "#", true, true);
     Graph G2 = reader.read(path);
-    EXPECT_EQ(G.numberOfNodes(),G2.numberOfNodes());
-    EXPECT_EQ(G.numberOfEdges(),G2.numberOfEdges());
-    EXPECT_EQ(G.isDirected(),G2.isDirected());
-    EXPECT_EQ(G.isWeighted(),G2.isWeighted());
+    EXPECT_EQ(G.numberOfNodes(), G2.numberOfNodes());
+    EXPECT_EQ(G.numberOfEdges(), G2.numberOfEdges());
+    EXPECT_EQ(G.isDirected(), G2.isDirected());
+    EXPECT_EQ(G.isWeighted(), G2.isWeighted());
+
+    // If not continuous, firstNode should be set to 0 automatically
+    reader = EdgeListReader(' ', 1, "#", false, true);
+    Graph G3 = reader.read(path);
+    EXPECT_EQ(G.numberOfNodes(), G3.numberOfNodes());
+    EXPECT_EQ(G.numberOfEdges(), G3.numberOfEdges());
+    EXPECT_EQ(G.isDirected(), G3.isDirected());
+    EXPECT_EQ(G.isWeighted(), G3.isWeighted());
+    std::vector<node> nodes(G.nodeRange().begin(), G.nodeRange().end());
+    index i = 0;
+    G3.forNodes([&](node u) { EXPECT_EQ(u, nodes[i++]); });
 }
 
 TEST_F(IOGTest, testGraphIOEdgeList) {
@@ -146,6 +164,17 @@ TEST_F(IOGTest, testMETISGraphReader) {
         EXPECT_TRUE(G.hasNode(v)) << "Node " << v << " should be there";
     }
 
+    path = "input/jazz2double.graph";
+    G = reader.read(path);
+    n = 5;
+    m = 6;
+    EXPECT_FALSE(G.isEmpty());
+    EXPECT_EQ(n, G.numberOfNodes()) << "There are " << n << " nodes in the graph";
+    EXPECT_EQ(m, G.numberOfEdges()) << "There are " << m << " edges in the graph";
+
+    for (index v = 0; v < n; ++v) {
+        EXPECT_TRUE(G.hasNode(v)) << "Node " << v << " should be there";
+    }
 
     // graph polblogs (has singletons)
     path = "input/polblogs.graph";
@@ -159,7 +188,6 @@ TEST_F(IOGTest, testMETISGraphReader) {
     for (index v = 0; v < n; ++v) {
         EXPECT_TRUE(G.hasNode(v)) << "Node " << v << " should be there";
     }
-
 
     // graph PGPgiantcompo
     path = "input/PGPgiantcompo.graph";
@@ -226,10 +254,10 @@ TEST_F(IOGTest, testMETISGraphReaderWithTinyGraphs) {
 TEST_F(IOGTest, testMETISGraphWriter) {
     std::string path = "output/jazz1.graph";
     Graph G = Graph(3);
-    G.addEdge(0,2);
-    G.addEdge(1,1);
-    G.addEdge(1,2);
-    G.addEdge(2,2);
+    G.addEdge(0, 2);
+    G.addEdge(1, 1);
+    G.addEdge(1, 2);
+    G.addEdge(2, 2);
 
     METISGraphWriter writer;
     writer.write(G, false, path);
@@ -239,16 +267,15 @@ TEST_F(IOGTest, testMETISGraphWriter) {
         exists = true;
     }
     EXPECT_TRUE(exists) << "A file should have been created : " << path;
-
 }
 
 TEST_F(IOGTest, testMETISGraphWriterWithWeights) {
     std::string path = "output/jazz2.graph";
     Graph G = Graph(5);
-    G.addEdge(0,2);
-    G.addEdge(0,1);
-    G.addEdge(0,0);
-    G.addEdge(1,1);
+    G.addEdge(0, 2);
+    G.addEdge(0, 1);
+    G.addEdge(0, 0);
+    G.addEdge(1, 1);
 
     METISGraphWriter writer;
     writer.write(G, true, path);
@@ -258,7 +285,6 @@ TEST_F(IOGTest, testMETISGraphWriterWithWeights) {
         exists = true;
     }
     EXPECT_TRUE(exists) << "A file should have been created : " << path;
-
 }
 
 TEST_F(IOGTest, testPartitionWriterAndReader) {
@@ -284,13 +310,14 @@ TEST_F(IOGTest, testPartitionWriterAndReader) {
     }
     EXPECT_TRUE(exists) << "clustering file should have been written to: " << path;
 
-
     PartitionReader reader;
     Partition read = reader.read(path);
 
     EXPECT_EQ(n, read.numberOfElements()) << "read clustering should contain n nodes";
-    EXPECT_TRUE(GraphClusteringTools::isProperClustering(G, read)) << "read clustering should be proper clustering of G";
-    EXPECT_TRUE(GraphClusteringTools::equalClusterings(read, zeta, G)) << "read clustering should be identical to created clustering";
+    EXPECT_TRUE(GraphClusteringTools::isProperClustering(G, read))
+        << "read clustering should be proper clustering of G";
+    EXPECT_TRUE(GraphClusteringTools::equalClusterings(read, zeta, G))
+        << "read clustering should be identical to created clustering";
 }
 
 TEST_F(IOGTest, testDotGraphWriter) {
@@ -328,24 +355,23 @@ TEST_F(IOGTest, debugDGSReader) {
 
     // get input parameters
     count nodeCount = G.numberOfNodes();
-    DEBUG("Number of nodes " , nodeCount);
+    DEBUG("Number of nodes ", nodeCount);
     EXPECT_EQ(3u, nodeCount);
     count edgeCount = G.numberOfEdges();
-    DEBUG("Number of edges " , edgeCount);
+    DEBUG("Number of edges ", edgeCount);
     EXPECT_EQ(2u, edgeCount);
 
     G.forNodes([&](node n) {
-        DEBUG("DEGREE OF NODE: " , G.degree(n) , "\n");
+        DEBUG("DEGREE OF NODE: ", G.degree(n), "\n");
         tlx::unused(n);
     });
-
 }
 
 TEST_F(IOGTest, testEdgeListReader) {
     EdgeListReader reader('\t', 1);
 
     std::string path = "input/network.dat";
-    DEBUG("reading file: " , path);
+    DEBUG("reading file: ", path);
     Graph G = reader.read(path);
     EXPECT_EQ(10u, G.numberOfNodes());
     EXPECT_EQ(10u, G.numberOfEdges());
@@ -354,56 +380,55 @@ TEST_F(IOGTest, testEdgeListReader) {
     EXPECT_TRUE(G.hasEdge(1, 7));
 
     path = "input/example.edgelist";
-    DEBUG("reading file: " , path);
+    DEBUG("reading file: ", path);
     EdgeListReader reader2('\t', 1);
     Graph G2 = reader2.read(path);
     EXPECT_EQ(10u, G2.numberOfEdges());
     EXPECT_TRUE(G2.hasEdge(0, 4));
 
     path = "input/spaceseparated.edgelist";
-    DEBUG("reading file: " , path);
+    DEBUG("reading file: ", path);
     EdgeListReader reader3(' ', 1);
     Graph G3 = reader3.read(path);
     EXPECT_EQ(10u, G3.numberOfEdges());
     EXPECT_TRUE(G3.hasEdge(0, 4));
 
     path = "input/spaceseparated_weighted.edgelist";
-    DEBUG("reading file: " , path);
+    DEBUG("reading file: ", path);
     Graph G32 = reader3.read(path);
     EXPECT_TRUE(G32.isWeighted());
-    EXPECT_EQ(2,G32.weight(0,1));
-    EXPECT_EQ(4,G32.weight(0,2));
-    EXPECT_EQ(3,G32.weight(1,2));
+    EXPECT_EQ(2, G32.weight(0, 1));
+    EXPECT_EQ(4, G32.weight(0, 2));
+    EXPECT_EQ(3, G32.weight(1, 2));
 
     path = "input/comments.edgelist";
-    DEBUG("reading file: " , path);
+    DEBUG("reading file: ", path);
     EdgeListReader reader4('\t', 1);
     Graph G4 = reader4.read(path);
     EXPECT_EQ(10u, G4.numberOfEdges());
     EXPECT_TRUE(G4.hasEdge(0, 4));
 
     path = "input/alphabet.edgelist";
-    DEBUG("reading file: " , path);
+    DEBUG("reading file: ", path);
     EdgeListReader reader5('\t', 0, "#", false, false);
     Graph G5 = reader5.read(path);
     EXPECT_EQ(5u, G5.numberOfNodes());
     EXPECT_EQ(4u, G5.numberOfEdges());
     EXPECT_TRUE(G5.hasEdge(0, 1));
     EXPECT_TRUE(G5.hasEdge(0, 2));
-    EXPECT_EQ(5, G5.weight(3,4));
-    EXPECT_EQ(1, G5.weight(2,3));
+    EXPECT_EQ(5, G5.weight(3, 4));
+    EXPECT_EQ(1, G5.weight(2, 3));
 }
 
 TEST_F(IOGTest, testEdgeListPartitionReader) {
     EdgeListPartitionReader reader(1);
 
     Partition zeta = reader.read("input/community.dat");
-    //EXPECT_EQ(10, zeta.size());
+    // EXPECT_EQ(10, zeta.size());
     EXPECT_EQ(1u, zeta[0]);
     EXPECT_EQ(3u, zeta[1]);
     EXPECT_EQ(2u, zeta[2]);
     EXPECT_EQ(10u, zeta.numberOfElements());
-
 }
 
 TEST_F(IOGTest, testEdgeListCoverReader) {
@@ -468,8 +493,8 @@ TEST_F(IOGTest, testMETISGraphReaderWithIsolatedNode) {
     EXPECT_TRUE(G.hasNode(1));
     EXPECT_TRUE(G.hasNode(2));
     EXPECT_TRUE(G.hasNode(3));
-    EXPECT_TRUE(G.hasEdge(0,1));
-    EXPECT_TRUE(G.hasEdge(0,3));
+    EXPECT_TRUE(G.hasEdge(0, 1));
+    EXPECT_TRUE(G.hasEdge(0, 3));
 }
 
 TEST_F(IOGTest, debugReadingLFR) {
@@ -482,7 +507,7 @@ TEST_F(IOGTest, debugReadingLFR) {
     std::cout << "[INPUT] clustering file path >" << std::endl;
     std::getline(std::cin, clustPath);
 
-    EdgeListReader graphReader('\t',1);
+    EdgeListReader graphReader('\t', 1);
     EdgeListPartitionReader clusteringReader;
 
     Graph G = graphReader.read(graphPath);
@@ -493,11 +518,10 @@ TEST_F(IOGTest, debugReadingLFR) {
     Partition zeta = PLP.getPartition();
 
     Modularity mod;
-    INFO("static clustering quality: " , mod.getQuality(zeta, G));
-    INFO("static clustering number of clusters: " , zeta.numberOfSubsets());
-    INFO("ground truth quality: " , mod.getQuality(truth, G));
-    INFO("ground truth number of clusters: " , truth.numberOfSubsets());
-
+    INFO("static clustering quality: ", mod.getQuality(zeta, G));
+    INFO("static clustering number of clusters: ", zeta.numberOfSubsets());
+    INFO("ground truth quality: ", mod.getQuality(truth, G));
+    INFO("ground truth number of clusters: ", truth.numberOfSubsets());
 }
 
 TEST_F(IOGTest, debugReadingSNAP) {
@@ -510,9 +534,8 @@ TEST_F(IOGTest, debugReadingSNAP) {
 
     Graph G = graphReader.read(graphPath);
 
-    INFO("n = " , G.numberOfNodes());
-    INFO("m = " , G.numberOfEdges());
-
+    INFO("n = ", G.numberOfNodes());
+    INFO("m = ", G.numberOfEdges());
 }
 
 TEST_F(IOGTest, testSNAPGraphReader) {
@@ -528,7 +551,8 @@ TEST_F(IOGTest, testSNAPGraphWriter) {
     METISGraphReader reader;
     Graph G = reader.read("input/jazz.graph");
 
-    std::string path = """output/SNAPGraphWriter.gr";
+    std::string path = ""
+                       "output/SNAPGraphWriter.gr";
     SNAPGraphWriter writer;
     writer.write(G, path);
 
@@ -554,33 +578,31 @@ TEST_F(IOGTest, debugReadingMETISFile) {
 TEST_F(IOGTest, testGMLGraphWriterUndirected) {
     std::string path = "output/jazz2_undirected.gml";
     Graph G = Graph(5);
-    G.addEdge(0,2);
-    G.addEdge(0,1);
-    G.addEdge(0,0);
-    G.addEdge(1,1);
+    G.addEdge(0, 2);
+    G.addEdge(0, 1);
+    G.addEdge(0, 0);
+    G.addEdge(1, 1);
 
     GMLGraphWriter writer;
-    writer.write(G,path);
+    writer.write(G, path);
     bool exists = false;
     std::ifstream file(path);
     if (file) {
         exists = true;
     }
     EXPECT_TRUE(exists) << "A file should have been created : " << path;
-
-
 }
 
 TEST_F(IOGTest, testGMLGraphWriterDirected) {
     std::string path = "output/jazz2_directed.gml";
-    Graph G = Graph(5,false,true);
-    G.addEdge(0,2);
-    G.addEdge(0,1);
-    G.addEdge(0,0);
-    G.addEdge(1,1);
+    Graph G = Graph(5, false, true);
+    G.addEdge(0, 2);
+    G.addEdge(0, 1);
+    G.addEdge(0, 0);
+    G.addEdge(1, 1);
 
     GMLGraphWriter writer;
-    writer.write(G,path);
+    writer.write(G, path);
     bool exists = false;
     std::ifstream file(path);
     if (file) {
@@ -594,13 +616,13 @@ TEST_F(IOGTest, testGMLGraphReaderUndirected) {
     GMLGraphReader reader;
     Graph G = reader.read(path);
     EXPECT_EQ(G.numberOfNodes(), 5u) << "number of nodes is not correct";
-    EXPECT_TRUE(G.hasEdge(0,2));
-    EXPECT_TRUE(G.hasEdge(0,1));
-    EXPECT_TRUE(G.hasEdge(0,0));
-    EXPECT_TRUE(G.hasEdge(1,1));
+    EXPECT_TRUE(G.hasEdge(0, 2));
+    EXPECT_TRUE(G.hasEdge(0, 1));
+    EXPECT_TRUE(G.hasEdge(0, 0));
+    EXPECT_TRUE(G.hasEdge(1, 1));
     EXPECT_FALSE(G.isDirected());
-    EXPECT_TRUE(G.hasEdge(2,0));
-    EXPECT_TRUE(G.hasEdge(1,0));
+    EXPECT_TRUE(G.hasEdge(2, 0));
+    EXPECT_TRUE(G.hasEdge(1, 0));
 }
 
 TEST_F(IOGTest, testGMLGraphReaderDirected) {
@@ -608,117 +630,145 @@ TEST_F(IOGTest, testGMLGraphReaderDirected) {
     GMLGraphReader reader;
     Graph G = reader.read(path);
     EXPECT_EQ(G.numberOfNodes(), 5u) << "number of nodes is not correct";
-    EXPECT_TRUE(G.hasEdge(0,2));
-    EXPECT_TRUE(G.hasEdge(0,1));
-    EXPECT_TRUE(G.hasEdge(0,0));
-    EXPECT_TRUE(G.hasEdge(1,1));
+    EXPECT_TRUE(G.hasEdge(0, 2));
+    EXPECT_TRUE(G.hasEdge(0, 1));
+    EXPECT_TRUE(G.hasEdge(0, 0));
+    EXPECT_TRUE(G.hasEdge(1, 1));
     EXPECT_TRUE(G.isDirected());
-    EXPECT_FALSE(G.hasEdge(2,0));
-    EXPECT_FALSE(G.hasEdge(1,0));
-
+    EXPECT_FALSE(G.hasEdge(2, 0));
+    EXPECT_FALSE(G.hasEdge(1, 0));
 }
 
 TEST_F(IOGTest, testGraphToolBinaryReader) {
     std::string path = "input/power.gt";
     GraphToolBinaryReader reader;
     Graph G = reader.read(path);
-    EXPECT_EQ(4941u,G.numberOfNodes());
-    EXPECT_EQ(6594u,G.numberOfEdges());
+    EXPECT_EQ(4941u, G.numberOfNodes());
+    EXPECT_EQ(6594u, G.numberOfEdges());
     EXPECT_FALSE(G.isDirected());
 }
 
 TEST_F(IOGTest, testGraphToolBinaryWriter) {
-    Graph G(10,false,false);
-    G.addEdge(0,1);
-    G.addEdge(2,1);
-    G.addEdge(2,3);
-    G.addEdge(3,4);
-    G.addEdge(5,4);
-    G.addEdge(5,6);
-    G.addEdge(7,6);
-    G.addEdge(8,6);
-    G.addEdge(7,8);
-    G.addEdge(9,8);
-    G.addEdge(9,0);
+    Graph G(10, false, false);
+    G.addEdge(0, 1);
+    G.addEdge(2, 1);
+    G.addEdge(2, 3);
+    G.addEdge(3, 4);
+    G.addEdge(5, 4);
+    G.addEdge(5, 6);
+    G.addEdge(7, 6);
+    G.addEdge(8, 6);
+    G.addEdge(7, 8);
+    G.addEdge(9, 8);
+    G.addEdge(9, 0);
     GraphToolBinaryReader reader;
     GraphToolBinaryWriter writer;
     std::string path = "output/test.gt";
-    writer.write(G,path);
+    writer.write(G, path);
     Graph Gread = reader.read(path);
-    EXPECT_EQ(G.numberOfNodes(),Gread.numberOfNodes());
-    EXPECT_EQ(G.numberOfEdges(),Gread.numberOfEdges());
-    EXPECT_EQ(G.isDirected(),Gread.isDirected());
-    EXPECT_EQ(G.isWeighted(),Gread.isWeighted());
+    EXPECT_EQ(G.numberOfNodes(), Gread.numberOfNodes());
+    EXPECT_EQ(G.numberOfEdges(), Gread.numberOfEdges());
+    EXPECT_EQ(G.isDirected(), Gread.isDirected());
+    EXPECT_EQ(G.isWeighted(), Gread.isWeighted());
+}
+
+TEST_F(IOGTest, testGraphToolBinaryWriterDifferentGraphSizes) {
+    GraphToolBinaryWriter writer;
+    GraphToolBinaryReader reader;
+    std::string path = "output/test.gt";
+    // less than 8 nodes
+    Graph G0(3, false, false);
+    writer.write(G0, path);
+    Graph G0read = reader.read(path);
+    EXPECT_EQ(G0.numberOfNodes(), G0read.numberOfNodes());
+    EXPECT_EQ(G0.numberOfEdges(), G0read.numberOfEdges());
+    EXPECT_EQ(G0.isDirected(), G0read.isDirected());
+    EXPECT_EQ(G0.isWeighted(), G0read.isWeighted());
+    // less than 2^16 nodes
+    Graph G1(30000, false, false);
+    writer.write(G1, path);
+    Graph G1read = reader.read(path);
+    EXPECT_EQ(G1.numberOfNodes(), G1read.numberOfNodes());
+    EXPECT_EQ(G1.numberOfEdges(), G1read.numberOfEdges());
+    EXPECT_EQ(G1.isDirected(), G1read.isDirected());
+    EXPECT_EQ(G1.isWeighted(), G1read.isWeighted());
+    // less than 2^32 nodes
+    Graph G2(100000, false, true);
+    writer.write(G2, path);
+    Graph G2read = reader.read(path);
+    EXPECT_EQ(G2.numberOfNodes(), G2read.numberOfNodes());
+    EXPECT_EQ(G2.numberOfEdges(), G2read.numberOfEdges());
+    EXPECT_EQ(G2.isDirected(), G2read.isDirected());
+    EXPECT_EQ(G2.isWeighted(), G2read.isWeighted());
 }
 
 TEST_F(IOGTest, testGraphToolBinaryWriterWithDeletedNodes) {
-    Graph G(10,false,false);
+    Graph G(10, false, false);
     G.removeNode(0);
-    G.addEdge(2,1);
-    G.addEdge(2,3);
+    G.addEdge(2, 1);
+    G.addEdge(2, 3);
     G.removeNode(4);
-    G.addEdge(5,6);
-    G.addEdge(7,6);
-    G.addEdge(8,6);
-    G.addEdge(7,8);
+    G.addEdge(5, 6);
+    G.addEdge(7, 6);
+    G.addEdge(8, 6);
+    G.addEdge(7, 8);
     G.removeNode(9);
     GraphToolBinaryReader reader;
     GraphToolBinaryWriter writer;
     std::string path = "output/test.gt";
-    writer.write(G,path);
+    writer.write(G, path);
     Graph Gread = reader.read(path);
-    EXPECT_EQ(G.numberOfNodes(),Gread.numberOfNodes());
-    EXPECT_EQ(G.numberOfEdges(),Gread.numberOfEdges());
-    EXPECT_EQ(G.isDirected(),Gread.isDirected());
-    EXPECT_EQ(G.isWeighted(),Gread.isWeighted());
+    EXPECT_EQ(G.numberOfNodes(), Gread.numberOfNodes());
+    EXPECT_EQ(G.numberOfEdges(), Gread.numberOfEdges());
+    EXPECT_EQ(G.isDirected(), Gread.isDirected());
+    EXPECT_EQ(G.isWeighted(), Gread.isWeighted());
 }
 
 TEST_F(IOGTest, testGraphToolBinaryWriterDirected) {
-    Graph G(10,false,true);
-    G.addEdge(0,1);
-    G.addEdge(2,1);
-    G.addEdge(2,3);
-    G.addEdge(3,4);
-    G.addEdge(5,4);
-    G.addEdge(5,6);
-    G.addEdge(7,6);
-    G.addEdge(8,6);
-    G.addEdge(7,8);
-    G.addEdge(9,8);
-    G.addEdge(9,0);
+    Graph G(10, false, true);
+    G.addEdge(0, 1);
+    G.addEdge(2, 1);
+    G.addEdge(2, 3);
+    G.addEdge(3, 4);
+    G.addEdge(5, 4);
+    G.addEdge(5, 6);
+    G.addEdge(7, 6);
+    G.addEdge(8, 6);
+    G.addEdge(7, 8);
+    G.addEdge(9, 8);
+    G.addEdge(9, 0);
     GraphToolBinaryReader reader;
     GraphToolBinaryWriter writer;
     std::string path = "output/test.gt";
-    writer.write(G,path);
+    writer.write(G, path);
     Graph Gread = reader.read(path);
-    EXPECT_EQ(G.numberOfNodes(),Gread.numberOfNodes());
-    EXPECT_EQ(G.numberOfEdges(),Gread.numberOfEdges());
-    EXPECT_EQ(G.isDirected(),Gread.isDirected());
-    EXPECT_EQ(G.isWeighted(),Gread.isWeighted());
+    EXPECT_EQ(G.numberOfNodes(), Gread.numberOfNodes());
+    EXPECT_EQ(G.numberOfEdges(), Gread.numberOfEdges());
+    EXPECT_EQ(G.isDirected(), Gread.isDirected());
+    EXPECT_EQ(G.isWeighted(), Gread.isWeighted());
 }
 
 TEST_F(IOGTest, testGraphToolBinaryWriterWithDeletedNodesDirected) {
-    Graph G(10,false,true);
+    Graph G(10, false, true);
     G.removeNode(0);
-    G.addEdge(2,1);
-    G.addEdge(2,3);
+    G.addEdge(2, 1);
+    G.addEdge(2, 3);
     G.removeNode(4);
-    G.addEdge(5,6);
-    G.addEdge(7,6);
-    G.addEdge(8,6);
-    G.addEdge(7,8);
+    G.addEdge(5, 6);
+    G.addEdge(7, 6);
+    G.addEdge(8, 6);
+    G.addEdge(7, 8);
     G.removeNode(9);
     GraphToolBinaryReader reader;
     GraphToolBinaryWriter writer;
     std::string path = "output/test.gt";
-    writer.write(G,path);
+    writer.write(G, path);
     Graph Gread = reader.read(path);
-    EXPECT_EQ(G.numberOfNodes(),Gread.numberOfNodes());
-    EXPECT_EQ(G.numberOfEdges(),Gread.numberOfEdges());
-    EXPECT_EQ(G.isDirected(),Gread.isDirected());
-    EXPECT_EQ(G.isWeighted(),Gread.isWeighted());
+    EXPECT_EQ(G.numberOfNodes(), Gread.numberOfNodes());
+    EXPECT_EQ(G.numberOfEdges(), Gread.numberOfEdges());
+    EXPECT_EQ(G.isDirected(), Gread.isDirected());
+    EXPECT_EQ(G.isWeighted(), Gread.isWeighted());
 }
-
 
 TEST_F(IOGTest, testThrillGraphBinaryWriterAndReader) {
     // This test graph has a large maximum degree as degrees smaller than 128
@@ -750,7 +800,7 @@ TEST_F(IOGTest, testThrillGraphBinaryWriterAndReader) {
 
 TEST_F(IOGTest, testBinaryPartitionWriterAndReader) {
     Partition P(5);
-    P.setUpperBound((1ull<<32));
+    P.setUpperBound((1ull << 32));
     P[0] = 0;
     P[1] = 2007;
     P[2] = none;
@@ -770,12 +820,12 @@ TEST_F(IOGTest, testBinaryPartitionWriterAndReader) {
     EXPECT_EQ(P[2], Q[2]);
     EXPECT_EQ(P[3], Q[3]);
     EXPECT_EQ(P[4], Q[4]);
-    EXPECT_EQ(Q.upperBound(), P[4]+1);
+    EXPECT_EQ(Q.upperBound(), P[4] + 1);
 }
 
 TEST_F(IOGTest, testBinaryEdgeListPartitionWriterAndReader) {
     Partition P(5);
-    P.setUpperBound((1ull<<32));
+    P.setUpperBound((1ull << 32));
     P[0] = 0;
     P[1] = 2007;
     P[2] = none;
@@ -795,17 +845,17 @@ TEST_F(IOGTest, testBinaryEdgeListPartitionWriterAndReader) {
     EXPECT_EQ(P[2], Q[2]);
     EXPECT_EQ(P[3], Q[3]);
     EXPECT_EQ(P[4], Q[4]);
-    EXPECT_EQ(Q.upperBound(), P[4]+1);
+    EXPECT_EQ(Q.upperBound(), P[4] + 1);
 }
 
-TEST_F(IOGTest, testKONECTGraphReader){
+TEST_F(IOGTest, testKONECTGraphReader) {
     KONECTGraphReader reader;
     Graph G = reader.read("input/foodweb-baydry.konect");
 
     ASSERT_TRUE(G.isDirected());
-    ASSERT_EQ(G.numberOfEdges() , 2137);
-    ASSERT_EQ(G.numberOfNodes() , 128);
-    ASSERT_EQ(G.weight(0,1), 1.261404);
+    ASSERT_EQ(G.numberOfEdges(), 2137);
+    ASSERT_EQ(G.numberOfNodes(), 128);
+    ASSERT_EQ(G.weight(0, 1), 1.261404);
     ASSERT_EQ(G.weight(127, 48), 0.03050447);
 }
 TEST_F(IOGTest, testNetworkitBinaryTiny01) {
@@ -822,9 +872,46 @@ TEST_F(IOGTest, testNetworkitBinaryTiny01) {
     EXPECT_EQ(G2.isWeighted(), false);
     ASSERT_EQ(G2.numberOfNodes(), G.numberOfNodes());
     ASSERT_EQ(G2.numberOfEdges(), G.numberOfEdges());
-    G.forNodes([&](node u){
+    G.forNodes([&](node u) { G.forEdgesOf(u, [&](node v) { ASSERT_TRUE(G2.hasEdge(u, v)); }); });
+}
+
+TEST_F(IOGTest, testNetworkitBinaryTiny01InMemory) {
+    METISGraphReader reader2;
+    Graph G = reader2.read("input/tiny_01.graph");
+    NetworkitBinaryWriter writer;
+
+    std::vector<uint8_t> data = writer.writeToBuffer(G);
+    ASSERT_TRUE(!G.isEmpty());
+
+    NetworkitBinaryReader reader;
+    Graph G2 = reader.readFromBuffer(data);
+    EXPECT_EQ(G2.isDirected(), false);
+    EXPECT_EQ(G2.isWeighted(), false);
+    ASSERT_EQ(G2.numberOfNodes(), G.numberOfNodes());
+    ASSERT_EQ(G2.numberOfEdges(), G.numberOfEdges());
+    G.forNodes([&](node u) { G.forEdgesOf(u, [&](node v) { ASSERT_TRUE(G2.hasEdge(u, v)); }); });
+}
+
+TEST_F(IOGTest, testNetworkitBinaryTiny01Indexed) {
+    METISGraphReader reader2;
+    Graph G = reader2.read("input/tiny_01.graph");
+    NetworkitBinaryWriter writer(32, NetworkitBinaryWeights::AUTO_DETECT);
+
+    G.indexEdges();
+    writer.write(G, "output/binary_tiny01");
+    ASSERT_TRUE(!G.isEmpty());
+
+    NetworkitBinaryReader reader;
+    Graph G2 = reader.read("output/binary_tiny01");
+    EXPECT_EQ(G2.isDirected(), false);
+    EXPECT_EQ(G2.isWeighted(), false);
+    ASSERT_EQ(G2.numberOfNodes(), G.numberOfNodes());
+    ASSERT_EQ(G2.numberOfEdges(), G.numberOfEdges());
+
+    G.forNodes([&](node u) {
         G.forEdgesOf(u, [&](node v) {
-            ASSERT_TRUE(G2.hasEdge(u,v));
+            ASSERT_TRUE(G2.hasEdge(u, v));
+            ASSERT_EQ(G2.edgeId(u, v), G.edgeId(u, v));
         });
     });
 }
@@ -843,10 +930,55 @@ TEST_F(IOGTest, testNetworkitBinaryKonect) {
     EXPECT_EQ(G2.isWeighted(), true);
     ASSERT_EQ(G2.numberOfEdges(), G.numberOfEdges());
     ASSERT_EQ(G2.numberOfNodes(), G.numberOfNodes());
-    G.forNodes([&](node u){
+    G.forNodes([&](node u) {
         G.forEdgesOf(u, [&](node v) {
-            ASSERT_TRUE(G2.hasEdge(u,v));
-            ASSERT_EQ(G.weight(u,v), G2.weight(u,v));
+            ASSERT_TRUE(G2.hasEdge(u, v));
+            ASSERT_EQ(G.weight(u, v), G2.weight(u, v));
+        });
+    });
+}
+
+TEST_F(IOGTest, testNetworkitBinaryKonectInMemory) {
+    KONECTGraphReader reader2;
+    Graph G = reader2.read("input/foodweb-baydry.konect");
+    NetworkitBinaryWriter writer;
+
+    std::vector<uint8_t> data = writer.writeToBuffer(G);
+    ASSERT_TRUE(!G.isEmpty());
+
+    NetworkitBinaryReader reader;
+    Graph G2 = reader.readFromBuffer(data);
+    EXPECT_EQ(G2.isDirected(), true);
+    EXPECT_EQ(G2.isWeighted(), true);
+    ASSERT_EQ(G2.numberOfEdges(), G.numberOfEdges());
+    ASSERT_EQ(G2.numberOfNodes(), G.numberOfNodes());
+    G.forNodes([&](node u) {
+        G.forEdgesOf(u, [&](node v) {
+            ASSERT_TRUE(G2.hasEdge(u, v));
+            ASSERT_EQ(G.weight(u, v), G2.weight(u, v));
+        });
+    });
+}
+
+TEST_F(IOGTest, testNetworkitBinaryKonectIndexed) {
+    KONECTGraphReader reader2;
+    Graph G = reader2.read("input/foodweb-baydry.konect");
+    G.indexEdges();
+    NetworkitBinaryWriter writer(32, NetworkitBinaryWeights::AUTO_DETECT);
+    writer.write(G, "output/binary_konect");
+    ASSERT_TRUE(!G.isEmpty());
+
+    NetworkitBinaryReader reader;
+    Graph G2 = reader.read("output/binary_konect");
+    EXPECT_EQ(G2.isDirected(), true);
+    EXPECT_EQ(G2.isWeighted(), true);
+    ASSERT_EQ(G2.numberOfEdges(), G.numberOfEdges());
+    ASSERT_EQ(G2.numberOfNodes(), G.numberOfNodes());
+    G.forNodes([&](node u) {
+        G.forEdgesOf(u, [&](node v) {
+            ASSERT_TRUE(G2.hasEdge(u, v));
+            ASSERT_EQ(G.weight(u, v), G2.weight(u, v));
+            ASSERT_EQ(G.edgeId(u, v), G2.edgeId(u, v));
         });
     });
 }
@@ -865,11 +997,25 @@ TEST_F(IOGTest, testNetworkitBinaryJazz) {
     EXPECT_EQ(G2.isWeighted(), false);
     ASSERT_EQ(G2.numberOfEdges(), G.numberOfEdges());
     ASSERT_EQ(G2.numberOfNodes(), G.numberOfNodes());
-    G.forNodes([&](node u){
-        G.forEdgesOf(u, [&](node v) {
-            ASSERT_TRUE(G2.hasEdge(u,v));
-        });
-    });
+    G.forNodes([&](node u) { G.forEdgesOf(u, [&](node v) { ASSERT_TRUE(G2.hasEdge(u, v)); }); });
+}
+
+TEST_F(IOGTest, testNetworkitBinaryJazzIndexed) {
+    METISGraphReader reader2;
+    Graph G = reader2.read("input/jazz.graph");
+    G.indexEdges();
+
+    NetworkitBinaryWriter writer(32, NetworkitBinaryWeights::AUTO_DETECT);
+    writer.write(G, "output/binary_jazz");
+    ASSERT_TRUE(!G.isEmpty());
+
+    NetworkitBinaryReader reader;
+    Graph G2 = reader.read("output/binary_jazz");
+    EXPECT_EQ(G2.isDirected(), false);
+    EXPECT_EQ(G2.isWeighted(), false);
+    ASSERT_EQ(G2.numberOfEdges(), G.numberOfEdges());
+    ASSERT_EQ(G2.numberOfNodes(), G.numberOfNodes());
+    G.forNodes([&](node u) { G.forEdgesOf(u, [&](node v) { ASSERT_TRUE(G2.hasEdge(u, v)); }); });
 }
 
 TEST_F(IOGTest, testNetworkitBinaryWiki) {
@@ -886,32 +1032,71 @@ TEST_F(IOGTest, testNetworkitBinaryWiki) {
     EXPECT_EQ(G2.isWeighted(), false);
     ASSERT_EQ(G2.numberOfEdges(), G.numberOfEdges());
     ASSERT_EQ(G2.numberOfNodes(), G.numberOfNodes());
-    G.forNodes([&](node u){
-        G.forEdgesOf(u, [&](node v) {
-            ASSERT_TRUE(G2.hasEdge(u,v));
-        });
-    });
+    G.forNodes([&](node u) { G.forEdgesOf(u, [&](node v) { ASSERT_TRUE(G2.hasEdge(u, v)); }); });
+}
+
+TEST_F(IOGTest, testNetworkitBinaryWikiIndexed) {
+    SNAPGraphReader reader2(true);
+    Graph G = reader2.read("input/wiki-Vote.txt");
+    G.indexEdges();
+    NetworkitBinaryWriter writer(32, NetworkitBinaryWeights::AUTO_DETECT);
+
+    writer.write(G, "output/binary_wiki");
+    ASSERT_TRUE(!G.isEmpty());
+
+    NetworkitBinaryReader reader;
+    Graph G2 = reader.read("output/binary_wiki");
+    EXPECT_EQ(G2.isDirected(), true);
+    EXPECT_EQ(G2.isWeighted(), false);
+    ASSERT_EQ(G2.numberOfEdges(), G.numberOfEdges());
+    ASSERT_EQ(G2.numberOfNodes(), G.numberOfNodes());
+    G.forNodes([&](node u) { G.forEdgesOf(u, [&](node v) { ASSERT_TRUE(G2.hasEdge(u, v)); }); });
 }
 
 TEST_F(IOGTest, testNetworkitBinarySignedWeights) {
 
     Graph G(10, true, false);
     int64_t weight = -1;
-    for(count n = 0; n < G.numberOfNodes(); n++) {
-        if(n != G.numberOfNodes()-1)
-            G.addEdge(n, n+1, weight++);
+    for (count n = 0; n < G.numberOfNodes(); n++) {
+        if (n != G.numberOfNodes() - 1)
+            G.addEdge(n, n + 1, weight++);
     }
-    NetworkitBinaryWriter writer(32, NetworkitBinaryWeights::autoDetect);
+    NetworkitBinaryWriter writer(32, NetworkitBinaryWeights::AUTO_DETECT);
     writer.write(G, "output/binarySigned");
 
     NetworkitBinaryReader reader;
     Graph G2 = reader.read("output/binarySigned");
     EXPECT_EQ(G2.isDirected(), false);
     EXPECT_EQ(G2.isWeighted(), true);
-    G.forNodes([&](node u){
+    G.forNodes([&](node u) {
         G.forEdgesOf(u, [&](node v) {
-            ASSERT_TRUE(G2.hasEdge(u,v));
-            ASSERT_EQ(G.weight(u,v), G2.weight(u,v));
+            ASSERT_TRUE(G2.hasEdge(u, v));
+            ASSERT_EQ(G.weight(u, v), G2.weight(u, v));
+        });
+    });
+}
+
+TEST_F(IOGTest, testNetworkitBinarySignedWeightsIndexed) {
+
+    Graph G(10, true, false);
+    G.indexEdges();
+    int64_t weight = -1;
+    for (count n = 0; n < G.numberOfNodes(); n++) {
+        if (n != G.numberOfNodes() - 1)
+            G.addEdge(n, n + 1, weight++);
+    }
+    NetworkitBinaryWriter writer(32, NetworkitBinaryWeights::AUTO_DETECT);
+    writer.write(G, "output/binarySigned");
+
+    NetworkitBinaryReader reader;
+    Graph G2 = reader.read("output/binarySigned");
+    EXPECT_EQ(G2.isDirected(), false);
+    EXPECT_EQ(G2.isWeighted(), true);
+    G.forNodes([&](node u) {
+        G.forEdgesOf(u, [&](node v) {
+            ASSERT_TRUE(G2.hasEdge(u, v));
+            ASSERT_EQ(G.weight(u, v), G2.weight(u, v));
+            ASSERT_EQ(G.edgeId(u, v), G2.edgeId(u, v));
         });
     });
 }
@@ -920,21 +1105,45 @@ TEST_F(IOGTest, testNetworkitBinaryFloatWeights) {
 
     Graph G(10, true, false);
     float weight = 987.654f;
-    for(count n = 0; n < G.numberOfNodes(); n++) {
-        if(n != G.numberOfNodes()-1)
-            G.addEdge(n, n+1, weight++);
+    for (count n = 0; n < G.numberOfNodes(); n++) {
+        if (n != G.numberOfNodes() - 1)
+            G.addEdge(n, n + 1, weight++);
     }
-    NetworkitBinaryWriter writer(32, NetworkitBinaryWeights::autoDetect);
+    NetworkitBinaryWriter writer(32, NetworkitBinaryWeights::AUTO_DETECT);
     writer.write(G, "output/binaryFloats");
 
     NetworkitBinaryReader reader;
     Graph G2 = reader.read("output/binaryFloats");
     EXPECT_EQ(G2.isDirected(), false);
     EXPECT_EQ(G2.isWeighted(), true);
-    G.forNodes([&](node u){
+    G.forNodes([&](node u) {
         G.forEdgesOf(u, [&](node v) {
-            ASSERT_TRUE(G2.hasEdge(u,v));
-            ASSERT_EQ(G.weight(u,v), G2.weight(u,v));
+            ASSERT_TRUE(G2.hasEdge(u, v));
+            ASSERT_EQ(G.weight(u, v), G2.weight(u, v));
+        });
+    });
+}
+
+TEST_F(IOGTest, testNetworkitBinaryFloatWeightsIndexed) {
+
+    Graph G(10, true, false);
+    G.indexEdges();
+    float weight = 987.654f;
+    for (count n = 0; n < G.numberOfNodes(); n++) {
+        if (n != G.numberOfNodes() - 1)
+            G.addEdge(n, n + 1, weight++);
+    }
+    NetworkitBinaryWriter writer(32, NetworkitBinaryWeights::AUTO_DETECT);
+    writer.write(G, "output/binaryFloats");
+
+    NetworkitBinaryReader reader;
+    Graph G2 = reader.read("output/binaryFloats");
+    EXPECT_EQ(G2.isDirected(), false);
+    EXPECT_EQ(G2.isWeighted(), true);
+    G.forNodes([&](node u) {
+        G.forEdgesOf(u, [&](node v) {
+            ASSERT_TRUE(G2.hasEdge(u, v));
+            ASSERT_EQ(G.weight(u, v), G2.weight(u, v));
         });
     });
 }
@@ -942,11 +1151,11 @@ TEST_F(IOGTest, testNetworkitBinaryFloatWeights) {
 TEST_F(IOGTest, testNetworkitBinaryUndirectedSelfLoops) {
 
     Graph G(5, false, false);
-    G.addEdge(0,0);
-    G.addEdge(1,1);
-    G.addEdge(2,2);
-    G.addEdge(3,3);
-    G.addEdge(4,4);
+    G.addEdge(0, 0);
+    G.addEdge(1, 1);
+    G.addEdge(2, 2);
+    G.addEdge(3, 3);
+    G.addEdge(4, 4);
     NetworkitBinaryWriter writer;
     writer.write(G, "output/loops");
     NetworkitBinaryReader reader;
@@ -959,11 +1168,11 @@ TEST_F(IOGTest, testNetworkitBinaryUndirectedSelfLoops) {
 TEST_F(IOGTest, testNetworkitBinaryDirectedSelfLoops) {
 
     Graph G(5, false, true);
-    G.addEdge(0,0);
-    G.addEdge(1,1);
-    G.addEdge(2,2);
-    G.addEdge(3,3);
-    G.addEdge(4,4);
+    G.addEdge(0, 0);
+    G.addEdge(1, 1);
+    G.addEdge(2, 2);
+    G.addEdge(3, 3);
+    G.addEdge(4, 4);
     NetworkitBinaryWriter writer;
     writer.write(G, "output/loops");
     NetworkitBinaryReader reader;
@@ -979,7 +1188,7 @@ TEST_F(IOGTest, testNetworkitBinaryVarInt) {
     // write defined values into buffer
     {
         uint8_t i = 0;
-        for(auto& x : buffer)
+        for (auto &x : buffer)
             x = i++;
     }
 
@@ -989,7 +1198,7 @@ TEST_F(IOGTest, testNetworkitBinaryVarInt) {
 
     for (int bits = 0; bits < 64; ++bits) {
         auto min = uint64_t(1) << bits;
-        auto max = 2*min - 1;
+        auto max = 2 * min - 1;
 
         // special cases
         if (bits == 0) {
@@ -1006,20 +1215,22 @@ TEST_F(IOGTest, testNetworkitBinaryVarInt) {
         for (size_t i = 0; i < nSamples; ++i) {
             // first two iterations test min/max values, all other random values
             const auto orig = [&] {
-                if (i == 0) return min;
-                if (i == 1) return max;
+                if (i == 0)
+                    return min;
+                if (i == 1)
+                    return max;
                 return distr(gen);
             }();
 
             uint64_t valueRead;
             const auto bytesWritten = nkbg::varIntEncode(orig, buffer.data());
-            const auto bytesRead    = nkbg::varIntDecode(buffer.data(), valueRead);
+            const auto bytesRead = nkbg::varIntDecode(buffer.data(), valueRead);
 
             ASSERT_EQ(bytesWritten, bytesRead) << "bits=" << bits << ", i=" << i;
-            ASSERT_EQ(valueRead, orig)         << "bits=" << bits << ", i=" << i;
-            ASSERT_GT(buffer[bytesWritten-1], 0) << "bits=" << bits << ", i=" << i;
+            ASSERT_EQ(valueRead, orig) << "bits=" << bits << ", i=" << i;
+            ASSERT_GT(buffer[bytesWritten - 1], 0) << "bits=" << bits << ", i=" << i;
 
-            for(size_t j = bytesWritten; j < buffer.size(); ++j)
+            for (size_t j = bytesWritten; j < buffer.size(); ++j)
                 ASSERT_EQ(buffer[j], j);
 
             checked_bits |= orig;
@@ -1028,15 +1239,15 @@ TEST_F(IOGTest, testNetworkitBinaryVarInt) {
 
     // make sure we touched each bit at least once
     ASSERT_EQ(checked_bits, std::numeric_limits<uint64_t>::max());
-
 }
 
 TEST_F(IOGTest, testNetworkitBinaryZigzag) {
     std::mt19937_64 gen(1);
-    std::uniform_int_distribution<uint64_t> distr(0, (std::numeric_limits<uint64_t>::max() >> 1) - 1);
+    std::uniform_int_distribution<uint64_t> distr(0,
+                                                  (std::numeric_limits<uint64_t>::max() >> 1) - 1);
 
-    for(int i = 0; i < 10000; ++i) {
-        auto check = [] (int64_t value) {
+    for (int i = 0; i < 10000; ++i) {
+        auto check = [](int64_t value) {
             const auto encoded = nkbg::zigzagEncode(value);
             const auto decoded = nkbg::zigzagDecode(encoded);
 
@@ -1047,6 +1258,342 @@ TEST_F(IOGTest, testNetworkitBinaryZigzag) {
         const auto x = distr(gen);
         check(x);
         check(-1 * x);
+    }
+}
+
+TEST_F(IOGTest, testNetworkitWriterNonContinuousNodesIds) {
+    Graph G(20, true);
+    G.removeNode(10);
+    std::string path = "output/test.gt";
+    NetworkitBinaryWriter{}.write(G, path);
+    Graph GRead = NetworkitBinaryReader{}.read(path);
+    EXPECT_EQ(G.numberOfNodes(), GRead.numberOfNodes());
+    EXPECT_EQ(G.numberOfEdges(), GRead.numberOfEdges());
+    EXPECT_EQ(G.isDirected(), GRead.isDirected());
+    EXPECT_EQ(G.isWeighted(), GRead.isWeighted());
+    G.forNodes([&](node u) {
+        G.forEdgesOf(u, [&](node v) {
+            EXPECT_TRUE(GRead.hasEdge(u, v));
+            EXPECT_DOUBLE_EQ(G.weight(u, v), GRead.weight(u, v));
+        });
+    });
+}
+
+TEST_F(IOGTest, testRBMatrixReader) {
+    RBMatrixReader reader;
+    auto csrRB = reader.read("input/tiny_05.rb");
+    auto csrMM = MatrixMarketReader{}.read("input/tiny_05.matrixmarket");
+    EXPECT_EQ(csrRB, csrMM);
+}
+
+TEST_F(IOGTest, testRBGraphReader) {
+    RBGraphReader reader;
+    auto graphRB = reader.read("input/tiny_05.rb");
+    auto graphMM = MTXGraphReader{}.read("input/tiny_05.matrixmarket");
+
+    EXPECT_EQ(graphRB.numberOfNodes(), graphMM.numberOfNodes());
+    EXPECT_EQ(graphRB.numberOfEdges(), graphMM.numberOfEdges());
+    EXPECT_EQ(graphRB.numberOfSelfLoops(), graphMM.numberOfSelfLoops());
+    EXPECT_EQ(graphRB.isWeighted(), graphMM.isWeighted());
+    EXPECT_EQ(graphRB.isDirected(), graphMM.isDirected());
+
+    graphRB.forEdges([&](node u, node v, edgeweight w) {
+        EXPECT_TRUE(graphMM.hasEdge(u, v));
+        EXPECT_EQ(graphMM.weight(u, v), w);
+    });
+
+    graphMM.forEdges([&](node u, node v, edgeweight w) {
+        EXPECT_TRUE(graphRB.hasEdge(u, v));
+        EXPECT_EQ(graphRB.weight(u, v), w);
+    });
+}
+
+TEST_F(IOGTest, testMatrixMarketReaderUnweightedUndirected) {
+    CSRMatrix csr = MatrixMarketReader{}.read("input/chesapeake.mtx");
+    EXPECT_EQ(csr.numberOfRows(), 39);
+    EXPECT_EQ(csr.nnz(), 170 * 2); // double due to being undirected
+    EXPECT_EQ(csr(7, 0), 1.0);
+    EXPECT_EQ(csr(21, 1), 1.0);
+    EXPECT_EQ(csr(5, 4), 1.0);
+    EXPECT_EQ(csr(10, 6), 1.0);
+    EXPECT_EQ(csr(35, 10), 1.0);
+    EXPECT_EQ(csr(26, 13), 1.0);
+    csr.forNonZeroElementsInRowOrder(
+        [&](index i, index j, double) { EXPECT_EQ(csr(i, j), csr(j, i)); });
+
+    // check that the MTXGraphReader is equivalent
+    Graph G = MTXGraphReader{}.read("input/chesapeake.mtx");
+    Graph G_from_csr = MatrixTools::matrixToGraph(csr);
+    EXPECT_EQ(G.numberOfNodes(), G_from_csr.numberOfNodes());
+    EXPECT_EQ(G.numberOfEdges(), G_from_csr.numberOfEdges());
+    G.forEdges([&](node u, node v, edgeweight w) {
+        EXPECT_TRUE(G_from_csr.hasEdge(u, v));
+        EXPECT_EQ(G_from_csr.weight(u, v), w);
+    });
+}
+
+TEST_F(IOGTest, testMatrixMarketReaderUnweightedDirected) {
+    CSRMatrix csr = MatrixMarketReader{}.read("input/GD01_b.mtx");
+    EXPECT_EQ(csr.numberOfRows(), 18);
+    EXPECT_EQ(csr.nnz(), 37);
+    EXPECT_EQ(csr(7, 1), 1.0);
+    EXPECT_EQ(csr(2, 3), 1.0);
+    EXPECT_EQ(csr(15, 3), 1.0);
+    EXPECT_EQ(csr(3, 9), 1.0);
+    EXPECT_EQ(csr(11, 12), 1.0);
+    EXPECT_EQ(csr(17, 13), 1.0);
+
+    // check that the MTXGraphReader is equivalent
+    Graph G = MTXGraphReader{}.read("input/GD01_b.mtx");
+    Graph G_from_csr = MatrixTools::matrixToGraph(csr);
+    EXPECT_EQ(G.numberOfNodes(), G_from_csr.numberOfNodes());
+    EXPECT_EQ(G.numberOfEdges(), G_from_csr.numberOfEdges());
+    G.forEdges([&](node u, node v, edgeweight w) {
+        EXPECT_TRUE(G_from_csr.hasEdge(u, v));
+        EXPECT_EQ(G_from_csr.weight(u, v), w);
+    });
+}
+
+TEST_F(IOGTest, testMatrixMarketReaderWeightedUndirected) {
+    CSRMatrix csr = MatrixMarketReader{}.read("input/LFAT5.mtx");
+    EXPECT_EQ(csr.numberOfRows(), 14);
+    // double due to being undirected but we don't double count self loops
+    EXPECT_EQ(csr.nnz(), 30 * 2 - 14);
+    EXPECT_EQ(csr(5, 1), -6.2832e6);
+    EXPECT_EQ(csr(3, 3), 15080.447999999997);
+    EXPECT_EQ(csr(8, 3), 94.2528);
+    EXPECT_EQ(csr(5, 5), 1.25664e7);
+    EXPECT_EQ(csr(11, 8), -94.2528);
+    EXPECT_EQ(csr(13, 11), 94.2528);
+    csr.forNonZeroElementsInRowOrder(
+        [&](index i, index j, double) { EXPECT_EQ(csr(i, j), csr(j, i)); });
+
+    // check that the MTXGraphReader is equivalent
+    Graph G = MTXGraphReader{}.read("input/LFAT5.mtx");
+    Graph G_from_csr = MatrixTools::matrixToGraph(csr);
+    EXPECT_EQ(G.numberOfNodes(), G_from_csr.numberOfNodes());
+    EXPECT_EQ(G.numberOfEdges(), G_from_csr.numberOfEdges());
+    G.forEdges([&](node u, node v, edgeweight w) {
+        EXPECT_TRUE(G_from_csr.hasEdge(u, v));
+        EXPECT_EQ(G_from_csr.weight(u, v), w);
+    });
+}
+
+TEST_F(IOGTest, testMatrixMarketReaderWeightedDirected) {
+    CSRMatrix csr = MatrixMarketReader{}.read("input/Hamrle1.mtx");
+    EXPECT_EQ(csr.numberOfRows(), 32);
+    EXPECT_EQ(csr.nnz(), 98);
+    EXPECT_EQ(csr(0, 0), 0.8499999999999999);
+    EXPECT_EQ(csr(2, 2), 1.0);
+    EXPECT_EQ(csr(3, 4), 0.2213493690543944);
+    EXPECT_EQ(csr(5, 9), -0.2039265503510711);
+    EXPECT_EQ(csr(9, 16), 0.2213493690543944);
+    EXPECT_EQ(csr(11, 23), 0.04492168652740657);
+
+    // check that the MTXGraphReader is equivalent
+    Graph G = MTXGraphReader{}.read("input/Hamrle1.mtx");
+    Graph G_from_csr = MatrixTools::matrixToGraph(csr);
+    EXPECT_EQ(G.numberOfNodes(), G_from_csr.numberOfNodes());
+    EXPECT_EQ(G.numberOfEdges(), G_from_csr.numberOfEdges());
+    G.forEdges([&](node u, node v, edgeweight w) {
+        EXPECT_TRUE(G_from_csr.hasEdge(u, v));
+        EXPECT_EQ(G_from_csr.weight(u, v), w);
+    });
+}
+
+TEST_F(IOGTest, testMatrixMarketReaderIntegerWeights) {
+    CSRMatrix csr = MatrixMarketReader{}.read("input/Ragusa16.mtx");
+    EXPECT_EQ(csr.numberOfRows(), 24);
+    EXPECT_EQ(csr.nnz(), 81);
+    EXPECT_EQ(csr(0, 4), 1.0);
+    EXPECT_EQ(csr(23, 4), 3.0);
+    EXPECT_EQ(csr(10, 6), 1.0);
+    EXPECT_EQ(csr(23, 9), 2.0);
+    EXPECT_EQ(csr(4, 10), 4.0);
+    EXPECT_EQ(csr(21, 21), 6.0);
+
+    // check that the MTXGraphReader is equivalent
+    Graph G = MTXGraphReader{}.read("input/Ragusa16.mtx");
+    Graph G_from_csr = MatrixTools::matrixToGraph(csr);
+    EXPECT_EQ(G.numberOfNodes(), G_from_csr.numberOfNodes());
+    EXPECT_EQ(G.numberOfEdges(), G_from_csr.numberOfEdges());
+    G.forEdges([&](node u, node v, edgeweight w) {
+        EXPECT_TRUE(G_from_csr.hasEdge(u, v));
+        EXPECT_EQ(G_from_csr.weight(u, v), w);
+    });
+}
+
+MATCHER_P(GraphFeaturesEqual, expected, "Graph matches expected features") {
+    return arg.numberOfNodes() == expected.numberOfNodes()
+           && arg.numberOfEdges() == expected.numberOfEdges()
+           && arg.isWeighted() == expected.isWeighted() && arg.isDirected() == expected.isDirected()
+           && arg.hasEdgeIds() == expected.hasEdgeIds();
+}
+
+TEST_F(IOGTest, testNetworkitBinaryWriteReadEmptyGraph) {
+    Graph graph(0, false, true);
+    const std::filesystem::path path = "output/empty_graph.nkb";
+    NetworkitBinaryWriter{}.write(graph, path.string());
+
+    const Graph graph_read = NetworkitBinaryReader{}.read(path.string());
+    EXPECT_THAT(graph_read, GraphFeaturesEqual(graph));
+}
+
+TEST_F(IOGTest, testNetworkitBinaryWriteReadEmptyGraphWithIndexes) {
+    Graph graph(0, true, false, true);
+    const std::filesystem::path path = "output/empty_graph.nkb";
+    NetworkitBinaryWriter{}.write(graph, path.string());
+
+    const Graph graph_read = NetworkitBinaryReader{}.read(path.string());
+    EXPECT_THAT(graph_read, GraphFeaturesEqual(graph));
+}
+
+TEST_F(IOGTest, testWriteReadNonContinuousUndirectedWeighted) {
+    Graph graph(8, true, false);
+
+    graph.removeNode(1);
+    graph.removeNode(4);
+    graph.removeNode(6);
+
+    graph.addEdge(0, 2, 2.0);
+    graph.addEdge(0, 3, 1.5);
+    graph.addEdge(2, 3, 3.25);
+    graph.addEdge(2, 5, 0.75);
+    graph.addEdge(3, 7, 4.0);
+    graph.addEdge(5, 7, 2.5);
+
+    // Edge that skips removed IDs
+    graph.addEdge(0, 7, 9.0);
+
+    std::string path = "output/writereadnoncont_weighted_undirected.nkb";
+
+    NetworkitBinaryWriter writer;
+    writer.write(graph, path);
+
+    NetworkitBinaryReader reader;
+    Graph readGraph = reader.read(path);
+
+    EXPECT_EQ(readGraph.numberOfNodes(), graph.numberOfNodes());
+    EXPECT_EQ(readGraph.upperNodeIdBound(), graph.upperNodeIdBound());
+    EXPECT_EQ(readGraph.isDirected(), graph.isDirected());
+    EXPECT_EQ(readGraph.isWeighted(), graph.isWeighted());
+    EXPECT_EQ(readGraph.numberOfEdges(), graph.numberOfEdges());
+
+    for (node u = 0; u < graph.upperNodeIdBound(); ++u) {
+        EXPECT_EQ(readGraph.hasNode(u), graph.hasNode(u)) << "u=" << u;
+    }
+
+    for (node u = 0; u < graph.upperNodeIdBound(); ++u) {
+        if (!graph.hasNode(u))
+            continue;
+
+        EXPECT_EQ(readGraph.degree(u), graph.degree(u)) << "deg u=" << u;
+
+        std::vector<node> nbrG, nbrR;
+        graph.forNeighborsOf(u, [&](node v) { nbrG.push_back(v); });
+        readGraph.forNeighborsOf(u, [&](node v) { nbrR.push_back(v); });
+
+        std::ranges::sort(nbrG);
+        std::ranges::sort(nbrR);
+        EXPECT_EQ(nbrR, nbrG) << "neighbors u=" << u;
+    }
+
+    // Adjacency equality per node
+    for (node u = 0; u < graph.upperNodeIdBound(); ++u) {
+        std::vector<node> nbrG, nbrR;
+
+        graph.forNeighborsOf(u, [&](node v) { nbrG.push_back(v); });
+        readGraph.forNeighborsOf(u, [&](node v) { nbrR.push_back(v); });
+
+        std::ranges::sort(nbrG);
+        std::ranges::sort(nbrR);
+
+        EXPECT_EQ(nbrR, nbrG) << "neighbors u=" << u;
+    }
+
+    const std::vector<WeightedEdge> edges = {
+        {0, 2, 2.0}, {0, 3, 1.5}, {2, 3, 3.25}, {2, 5, 0.75}, {3, 7, 4.0}, {5, 7, 2.5}, {0, 7, 9.0},
+    };
+
+    for (const auto &e : edges) {
+        EXPECT_TRUE(readGraph.hasEdge(e.u, e.v)) << "edge " << e.u << "-" << e.v;
+        EXPECT_TRUE(readGraph.hasEdge(e.v, e.u)) << "edge " << e.v << "-" << e.u;
+
+        EXPECT_DOUBLE_EQ(readGraph.weight(e.u, e.v), e.weight) << "w(" << e.u << "," << e.v << ")";
+        EXPECT_DOUBLE_EQ(readGraph.weight(e.v, e.u), e.weight) << "w(" << e.v << "," << e.u << ")";
+    }
+
+    // Sanity check: removed nodes have no incident edges
+    for (node u : {1u, 4u, 6u}) {
+        EXPECT_FALSE(readGraph.hasNode(u));
+    }
+}
+
+TEST_F(IOGTest, testWriteReadNonContinuousDirectedEdgesIndexed) {
+    Graph graph(10, false, true);
+
+    graph.removeNode(1);
+    graph.removeNode(4);
+    graph.removeNode(8);
+
+    graph.addEdge(0, 2);
+    graph.addEdge(2, 0);
+    graph.addEdge(0, 3);
+    graph.addEdge(3, 5);
+    graph.addEdge(5, 7);
+    graph.addEdge(7, 9);
+    graph.addEdge(9, 2);
+    graph.addEdge(6, 7);
+    graph.addEdge(6, 9);
+    graph.addEdge(2, 7);
+    graph.addEdge(9, 0);
+
+    graph.indexEdges();
+
+    std::string path = "output/writereadnoncont_directed_edgeids.nkb";
+
+    NetworkitBinaryWriter writer;
+    writer.write(graph, path);
+
+    NetworkitBinaryReader reader;
+    Graph readGraph = reader.read(path);
+
+    EXPECT_EQ(readGraph.numberOfNodes(), graph.numberOfNodes());
+    EXPECT_EQ(readGraph.upperNodeIdBound(), graph.upperNodeIdBound());
+    EXPECT_EQ(readGraph.isDirected(), graph.isDirected());
+    EXPECT_EQ(readGraph.isWeighted(), graph.isWeighted());
+    EXPECT_EQ(readGraph.numberOfEdges(), graph.numberOfEdges());
+
+    for (node u = 0; u < graph.upperNodeIdBound(); ++u) {
+        EXPECT_EQ(readGraph.hasNode(u), graph.hasNode(u)) << "u=" << u;
+    }
+
+    // Adjacency equality (strong)
+    for (node u = 0; u < graph.upperNodeIdBound(); ++u) {
+        std::vector<node> nbrG, nbrR;
+        graph.forNeighborsOf(u, [&](node v) { nbrG.push_back(v); });
+        readGraph.forNeighborsOf(u, [&](node v) { nbrR.push_back(v); });
+
+        std::ranges::sort(nbrG);
+        std::ranges::sort(nbrR);
+        EXPECT_EQ(nbrR, nbrG) << "neighbors u=" << u;
+    }
+
+    // Edge ID checks
+    EXPECT_TRUE(graph.hasEdgeIds());
+    EXPECT_TRUE(readGraph.hasEdgeIds());
+
+    graph.forEdges([&](node u, node v) {
+        const auto idG = graph.edgeId(u, v);
+        const auto idR = readGraph.edgeId(u, v);
+        EXPECT_EQ(idR, idG) << "edgeId(" << u << "->" << v << ")";
+    });
+
+    for (edgeid id = 0; id < graph.numberOfEdges(); ++id) {
+        auto [u, v] = readGraph.edgeById(id);
+
+        EXPECT_TRUE(readGraph.hasEdge(u, v)) << "edgeById(" << id << ") gives non-edge";
+        EXPECT_EQ(readGraph.edgeId(u, v), id) << "edgeId(edgeById(" << id << "))";
     }
 }
 

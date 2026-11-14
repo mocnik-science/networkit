@@ -9,17 +9,13 @@ template <typename AttributeT>
 class PrefixJaccardScore final : public EdgeScore<double> {
 
 public:
-    PrefixJaccardScore(const Graph& G, const std::vector<AttributeT>& attribute);
-    double score(edgeid eid) override;
-    double score(node u, node v) override;
+    PrefixJaccardScore(const Graph &G, const std::vector<AttributeT> &attribute);
     void run() override;
 
-
 private:
-    const std::vector<AttributeT>* inAttribute;
-
+    const std::vector<AttributeT> *inAttribute;
 };
 
-}
+} // namespace NetworKit
 
 #endif // NETWORKIT_EDGESCORES_PREFIX_JACCARD_SCORE_HPP_

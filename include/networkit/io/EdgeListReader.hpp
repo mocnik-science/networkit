@@ -5,8 +5,6 @@
  *      Author: cls
  */
 
-// networkit-format
-
 #ifndef NETWORKIT_IO_EDGE_LIST_READER_HPP_
 #define NETWORKIT_IO_EDGE_LIST_READER_HPP_
 
@@ -35,7 +33,7 @@ public:
      * @param[in]  continuous  boolean to specify if node ids are continuous
      * @param[in]  directed  read graph as directed
      */
-    EdgeListReader(char separator, node firstNode, const std::string &commentPrefix = "#",
+    EdgeListReader(char separator, node firstNode, std::string_view commentPrefix = "#",
                    bool continuous = true, bool directed = false);
 
     /**
@@ -43,7 +41,7 @@ public:
      *
      * @param[in]  path  input file path
      */
-    Graph read(const std::string &path) override;
+    Graph read(std::string_view path) override;
 
     /**
      * Return the node map, in case node ids are not continuous

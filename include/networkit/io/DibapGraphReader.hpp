@@ -4,7 +4,6 @@
  *  Created on: Jun 12, 2013
  *      Author: Henning
  */
-// networkit-format
 
 #ifndef NETWORKIT_IO_DIBAP_GRAPH_READER_HPP_
 #define NETWORKIT_IO_DIBAP_GRAPH_READER_HPP_
@@ -27,7 +26,7 @@ class DibapGraphReader final : public GraphReader {
 public:
     DibapGraphReader() = default;
 
-    Graph read(const std::string &path) override;
+    Graph read(std::string_view path) override;
 
     const std::vector<Point<coordinate>> &getCoordinates() const noexcept { return coordinates; }
 

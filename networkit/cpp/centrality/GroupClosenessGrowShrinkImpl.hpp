@@ -5,15 +5,13 @@
  *      Author: Eugenio Angriman <angrimae@hu-berlin.de>
  */
 
-// networkit-format
-
 #ifndef NETWORKIT_CENTRALITY_GROUP_CLOSENESS_GROW_SHRINK_IMPL_HPP_
 #define NETWORKIT_CENTRALITY_GROUP_CLOSENESS_GROW_SHRINK_IMPL_HPP_
 
-#ifdef AVX2_AVAILABLE
+#ifdef __AVX2__
 #include <immintrin.h>
 #include <networkit/auxiliary/AlignedAllocator.hpp>
-#endif // AVX2_AVAILABLE
+#endif // __AVX2__
 
 #include <cmath>
 #include <functional>
@@ -23,6 +21,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include <networkit/auxiliary/VectorComparator.hpp>
 #include <networkit/distance/Diameter.hpp>
 #include <networkit/graph/Graph.hpp>
 
@@ -75,7 +74,7 @@ private:
 
     void init();
 
-#ifdef AVX2_AVAILABLE
+#ifdef __AVX2__
     union RandItem {
         uint16_t items[K];
         __m256i vec;
@@ -83,24 +82,12 @@ private:
     std::vector<RandItem, AlignedAllocator<RandItem, sizeof(RandItem)>> randVec;
 #else
     std::vector<uint16_t> randVec;
-#endif // AVX2_AVAILABLE
+#endif // __AVX2__
 
     std::vector<std::uniform_int_distribution<uint32_t>> intDistributions;
     void initRandomVec();
 
-    struct CompareDistance {
-        CompareDistance(const std::vector<WeightType> &distance) : distance(&distance) {}
-
-        bool operator()(const node x, const node y) const noexcept {
-            return (*distance)[x] < (*distance)[y];
-        }
-
-    private:
-        const std::vector<WeightType> *distance;
-    };
-
-    tlx::d_ary_addressable_int_heap<node, 2, CompareDistance> heap;
-    tlx::d_ary_addressable_int_heap<node, 2, CompareDistance> heap_;
+    tlx::d_ary_addressable_int_heap<node, 2, Aux::LessInVector<WeightType>> heap, heap_;
 
     void dijkstra();
     bool findAndSwap();

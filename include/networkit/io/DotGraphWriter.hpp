@@ -17,8 +17,10 @@ namespace NetworKit {
 
  * @ingroup io
  *
- * This class turns a graph into a very basic GraphViz file as documented in the official manual [1].
- * If a more thorough support is desired, please contact the developers: https://github.com/networkit/networkit
+ * This class turns a graph into a very basic GraphViz file as documented in the official manual
+ [1].
+ * If a more thorough support is desired, please contact the developers:
+ https://github.com/networkit/networkit
  *
  * [1] https://graphviz.gitlab.io/_pages/pdf/dotguide.pdf
  */
@@ -30,8 +32,7 @@ public:
      * @param[in]	graph	The graph object
      * @param[in]	path	The file path to be written to
      */
-    void write(const Graph &G, const std::string &path) override;
-
+    void write(const Graph &G, std::string_view path) override;
 };
 
 } /* namespace NetworKit */

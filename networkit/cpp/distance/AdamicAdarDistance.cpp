@@ -11,8 +11,7 @@
 
 namespace NetworKit {
 
-AdamicAdarDistance::AdamicAdarDistance(const Graph& G) : NodeDistance(G) {
-}
+AdamicAdarDistance::AdamicAdarDistance(const Graph &G) : NodeDistance(G) {}
 
 void AdamicAdarDistance::preprocess() {
     if (!G->hasEdgeIds()) {
@@ -21,28 +20,26 @@ void AdamicAdarDistance::preprocess() {
 
     Graph g = *G;
 
-    //Node attribute: marker
+    // Node attribute: marker
     std::vector<bool> nodeMarker(g.upperNodeIdBound(), false);
 
-    //Edge attribute: triangle count
+    // Edge attribute: triangle count
     aaDistance = std::vector<double>(g.upperEdgeIdBound(), 0);
 
     g.forNodes([&](node u) {
-        //Mark all neighbors
-        g.forNeighborsOf(u, [&](node v) {
-            nodeMarker[v] = true;
-        });
+        // Mark all neighbors
+        g.forNeighborsOf(u, [&](node v) { nodeMarker[v] = true; });
 
-        //For all neighbors: check for already marked neighbors.
+        // For all neighbors: check for already marked neighbors.
         g.forNeighborsOf(u, [&](node, node v, edgeid eid_uv) {
             g.forNeighborsOf(v, [&](node, node w, edgeid eid_vw) {
                 if (nodeMarker[w]) {
 
                     edgeid eid_uw = G->edgeId(u, w);
 
-                    aaDistance[eid_uv] = aaDistance[eid_uv] + 1.0 / log(G->degree(w));
-                    aaDistance[eid_uw] = aaDistance[eid_uw] + 1.0 / log(G->degree(v));
-                    aaDistance[eid_vw] = aaDistance[eid_vw] + 1.0 / log(G->degree(u));
+                    aaDistance[eid_uv] = aaDistance[eid_uv] + 1.0 / std::log(G->degree(w));
+                    aaDistance[eid_uw] = aaDistance[eid_uw] + 1.0 / std::log(G->degree(v));
+                    aaDistance[eid_vw] = aaDistance[eid_vw] + 1.0 / std::log(G->degree(u));
                 }
             });
 
@@ -52,9 +49,7 @@ void AdamicAdarDistance::preprocess() {
         g.removeNode(u);
     });
 
-    G->parallelForEdges([&](node, node, edgeid eid) {
-        aaDistance[eid] = 1 / aaDistance[eid];
-    });
+    G->parallelForEdges([&](node, node, edgeid eid) { aaDistance[eid] = 1 / aaDistance[eid]; });
 }
 
 double AdamicAdarDistance::distance(node u, node v) {
@@ -62,8 +57,7 @@ double AdamicAdarDistance::distance(node u, node v) {
     return aaDistance[eid];
 }
 
-
-std::vector< double > AdamicAdarDistance::getEdgeScores() {
+const std::vector<double> &AdamicAdarDistance::getEdgeScores() const {
     return aaDistance;
 }
 

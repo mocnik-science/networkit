@@ -3,6 +3,46 @@
 
 API-breaking changes are extracted and filtered by using [ABI-compliance checker](https://lvc.github.io/abi-compliance-checker/) together with [ABI-dumper](https://github.com/lvc/abi-dumper) for C++ core-library and the Cython-interface. Native Python-code functions are covered by diffs.
 
+## Changes in NetworKit 11.0
+
+### Function/Class removed
+
+- Components
+  - `ParallelConnectededComponents::runSequential()`
+
+- Distance
+  - `BidirectionalBFS::getHops()`
+
+- Dynamics
+  - `GraphEvent::compare()`
+  - `GraphEvent::equal()`
+
+- Graph
+  - `GraphBuilder::toGraph()`
+  - `Sampling` (including all functions)
+
+- Sparsification
+  - `SimmelianScore::matchNeighbors()`
+
+### Changes in Python interface
+
+- The following modules are removed: `csbrige`, `dynamic`, `GEXFIO`, `GraphMLIO`, `partitioning`, `sampling`, `stopwatch`, `viztasks`, `workflows`
+
+- Removed functions and classes from C++ are also removed in the Python interface
+
+- graphtools
+  - `subgraphFromNodes()` does not anymore support named parameters `includeOutNeighbors` and `includeInNeighbors`. Use `subgraphAndNeighborsFromNodes` instead for the same functionality.
+
+- helpers
+  - `sorted()` is removed. Use the native Python `sorted()` function instead
+
+## Changes in NetworKit 9.0
+
+### Namespace members removed
+  - NetworKit
+    - `localNodeCategories` is removed. This variable did not have any functionality.
+
+
 ## Changes in NetworKit 8.0
 
 ### Function/Class removed
@@ -73,6 +113,7 @@ API-breaking changes are extracted and filtered by using [ABI-compliance checker
 - graph
   - The following functions are removed from the `graph`-module. Most of them are available now from the `graphtools`-module:
   `append()`, `copyNodes()`, `density()`, `edges()`, `inNeighbors`, `maxDegree()`, `maxDegreeIn()`, `maxWeightedDegree()`, `maxWeightedDegreeIn()`, `merge()`, `neighbors()`, `randomEdge()`, `randomEdges()`, `randomNeighbor()`, `randomNode()`, `removeEdgesFromIsolatedSet()`, `size()`, `subgraphFromNodes()`, `toString()`, `toUndirected()`, `toUnweighted()`, `transpose()`, `typ()`, `volume()`
+
 
 ## Changes in NetworKit 7.0
 

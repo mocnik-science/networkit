@@ -4,25 +4,83 @@ from . import graph
 from .algebraic import adjacencyEigenvectors
 
 class SpectralColoring(object):
+	"""
+	SpectralColoring(G)
+
+	Algorithm for computing a valid spectral coloring for a given graph.
+
+	Parameters
+	----------
+	G : networkit.Graph
+		The graph to compute the spectral coloring for.
+	"""
 	def __init__(self, G):
 		super(SpectralColoring, self).__init__()
 
 		self.graph = G
 
 	def prepareSpectrum(self):
-		spectrum = adjacencyEigenvectors(self.graph)
+		"""
+		prepareSpectrum()
+
+		Computes eigenvalues and eigenvector in order to prepare the spectral coloring. 
+		This function does not need to be called, it is sufficient to call run()
+		for the SpectralColoring-object.
+		"""
+		n = self.graph.numberOfNodes()
+		# Ask for as many eigenvectors as the solver allows: eigsh needs k < n, eigs (directed)
+		# needs k < n - 1, and graphs with n <= 2 are solved densely.
+		if n <= 2:
+			cutoff = n - 1
+		elif self.graph.isDirected():
+			cutoff = n - 3
+		else:
+			cutoff = n - 2
+		spectrum = adjacencyEigenvectors(self.graph, cutoff=cutoff)
 		self.eigenvalues = spectrum[0]
 		self.eigenvectors = spectrum[1]
 
 	def valid(self, color):
+		"""
+		valid(color)
+
+		Checks whether colorID is valid
+
+		Parameters
+		----------
+		color : int
+			colorID to check for.
+
+		Returns
+		-------
+		bool
+			Returns True if valid, False if not.
+		"""
 		for v in self.colors[color]:
-			for u in self.graph.neighbors(v):
+			for u in self.graph.iterNeighbors(v):
 				if u in self.colors[color]:
 					return False
 
 		return True
 
 	def split(self, color, depth=0):
+		"""
+		split(color, depth=0)
+
+		Helper method for computing spectral coloring. 
+		This function does not need to be called, it is sufficient to call run()
+		for the SpectralColoring-object.
+
+		Parameters
+		----------
+		color : int
+			colorID to split corresponding nodes into colorID and new color.
+		depth : int, optional
+			Sets index of eigenvector to compare to `depth`. Default: 0
+		"""
+		if depth >= len(self.eigenvectors):
+			raise RuntimeError("SpectralColoring: ran out of eigenvectors before finding a valid coloring")
+
 		otherColor = self.nextColor
 		self.nextColor += 1
 
@@ -38,6 +96,13 @@ class SpectralColoring(object):
 			self.split(otherColor, depth=depth+1)
 
 	def buildReverseDict(self):
+		"""
+		buildReverseDict()
+
+		Helper method for computing spectral coloring. 
+		This function does not need to be called, it is sufficient to call run()
+		for the SpectralColoring-object.
+		"""
 		self.coloring = {}
 
 		for color in self.colors:
@@ -46,6 +111,15 @@ class SpectralColoring(object):
 
 
 	def run(self):
+		"""
+		run()
+
+		Main method of SpectralColoring. This computes a valid coloring.
+		"""
+		if self.graph.numberOfNodes() == 0:
+			self.coloring = {}
+			return
+
 		self.prepareSpectrum()
 
 		self.colors = {0 : set(self.graph.iterNodes())}
@@ -55,4 +129,14 @@ class SpectralColoring(object):
 		self.buildReverseDict()
 
 	def getColoring(self):
+		"""
+		getColoring()
+
+		Returns a valid coloring for a given graph. Each node has a color ID to be mapped onto a color palette.
+
+		Returns
+		-------
+		list(int)
+			A list of nodes containing a valid color mapping. 
+		"""
 		return self.coloring

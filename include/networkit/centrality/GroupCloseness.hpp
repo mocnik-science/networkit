@@ -1,5 +1,5 @@
 /*
- * GroupCloseness.h
+ * GroupCloseness.hpp
  *
  *  Created on: 03.10.2016
  *      Author: elisabetta bergamini
@@ -12,6 +12,8 @@
 #include <sstream>
 
 #include <networkit/base/Algorithm.hpp>
+#include <networkit/graph/BFS.hpp>
+#include <networkit/graph/Dijkstra.hpp>
 #include <networkit/graph/Graph.hpp>
 
 namespace NetworKit {
@@ -19,7 +21,7 @@ namespace NetworKit {
 /**
  * @ingroup centrality
  */
-class GroupCloseness : public Algorithm {
+class GroupCloseness final : public Algorithm {
 public:
     /**
      * Finds the group of nodes with highest (group) closeness centrality.
@@ -29,10 +31,11 @@ public:
      * much faster in practice.
      *
      * @param G An unweighted graph.
-     * @param k Size of the group of nodes
+     * @param k Size of the group of nodes, between 1 and G.numberOfNodes().
      * @param H If equal 0, simply runs the algorithm proposed in Bergamini et
      * al.. If > 0, interrupts all BFSs after H iterations (suggested for very
      * large networks).
+     * @throws std::invalid_argument If k is zero or exceeds the number of nodes.
      * @
      */
     GroupCloseness(const Graph &G, count k = 1, count H = 0);
@@ -40,6 +43,7 @@ public:
     /**
      * Computes the group with maximum closeness on the graph passed in the
      * constructor.
+     * @throws std::invalid_argument If k exceeds the current number of nodes.
      */
     void run() override;
 
@@ -52,24 +56,21 @@ public:
      * Computes farness (i.e., inverse of the closeness) for a given group
      * (stopping after H iterations if H > 0).
      */
-    double computeFarness(std::vector<node> S,
-                          count H = std::numeric_limits<count>::max());
+    double computeFarness(const std::vector<node> &S,
+                          count H = std::numeric_limits<count>::max()) const;
 
     /**
      * Computes the score of a specific group.
      */
     double scoreOfGroup(const std::vector<node> &group) const;
 
-protected:
-    edgeweight computeImprovement(node u, count n, Graph &G, count h);
-    std::vector<count> newDistances(node u, count n, Graph &G, count h);
-    Graph G;
+private:
+    edgeweight computeImprovement(node u, count h);
+    void updateDistances(node u);
+    const Graph *G;
     count k = 1;
-    std::vector<count> D;
-    count iters;
-    count maxD;
     std::vector<count> d;
-    std::vector<count> d1;
+    std::vector<std::vector<count>> d1Global;
     std::vector<node> S;
     count H = 0;
 
@@ -82,7 +83,7 @@ inline std::vector<node> GroupCloseness::groupMaxCloseness() {
 }
 
 inline void GroupCloseness::checkGroup(const std::vector<node> &group) const {
-    const count z = G.upperNodeIdBound();
+    const count z = G->upperNodeIdBound();
     std::vector<bool> check(z, false);
 #pragma omp parallel for
     for (omp_index i = 0; i < static_cast<omp_index>(group.size()); ++i) {
@@ -101,46 +102,16 @@ inline void GroupCloseness::checkGroup(const std::vector<node> &group) const {
     }
 }
 
-inline double
-GroupCloseness::scoreOfGroup(const std::vector<node> &group) const {
-    std::vector<bool> explored(G.upperNodeIdBound(), false);
-    std::vector<count> distance(G.upperNodeIdBound(), 0);
+inline double GroupCloseness::scoreOfGroup(const std::vector<node> &group) const {
+    double sumDist = 0.;
+    if (G->isWeighted())
+        Traversal::DijkstraFrom(*G, group.begin(), group.end(),
+                                [&](node, edgeweight dist) { sumDist += dist; });
+    else
+        Traversal::BFSfrom(*G, group.begin(), group.end(),
+                           [&](node, count dist) { sumDist += static_cast<double>(dist); });
 
-    for (count i = 0; i < group.size(); ++i) {
-        explored[group[i]] = true;
-    }
-
-    std::vector<node> queue;
-    auto exploreNode = [&](node w, count d) {
-        explored[w] = true;
-        queue.push_back(w);
-        distance[w] = d;
-    };
-
-    count d = 1;
-    for (auto u : group) {
-        G.forNeighborsOf(u, [&](node v) {
-            if (!explored[v]) {
-                exploreNode(v, d);
-            }
-        });
-    }
-
-    while (!queue.empty()) {
-        ++d;
-        node u = queue.front();
-        queue.erase(queue.begin());
-        G.forNeighborsOf(u, [&](node v) {
-            if (!explored[v]) {
-                exploreNode(v, d);
-            }
-        });
-    }
-
-    double dSum = std::accumulate(distance.begin(), distance.end(), 0.0);
-    return dSum == 0
-               ? 0.
-               : ((double)G.upperNodeIdBound() - (double)group.size()) / dSum;
+    return sumDist > 0. ? ((double)G->upperNodeIdBound() - (double)group.size()) / sumDist : 0.;
 }
 } /* namespace NetworKit */
 #endif // NETWORKIT_CENTRALITY_GROUP_CLOSENESS_HPP_

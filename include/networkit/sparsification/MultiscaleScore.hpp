@@ -22,18 +22,15 @@ namespace NetworKit {
 class MultiscaleScore final : public EdgeScore<double> {
 
 public:
-
-    MultiscaleScore(const Graph& graph, const std::vector<double>& attribute);
-    double score(edgeid eid) override;
-    double score(node u, node v) override;
+    MultiscaleScore(const Graph &graph, const std::vector<double> &attribute);
     void run() override;
     double getProbability(count degree, edgeweight normalizedWeight);
 
 private:
-    const std::vector<double>* attribute;
+    const std::vector<double> *attribute;
 };
 
-}
+} // namespace NetworKit
 /* namespace NetworKit */
 
 #endif // NETWORKIT_SPARSIFICATION_MULTISCALE_SCORE_HPP_

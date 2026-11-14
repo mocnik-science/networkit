@@ -5,6 +5,7 @@ networkit_add_module(community
     Conductance.cpp
     CoverHubDominance.cpp
     CoverF1Similarity.cpp
+    OverlappingNMIDistance.cpp
     Coverage.cpp
     CutClustering.cpp
     DissimilarityMeasure.cpp
@@ -17,12 +18,14 @@ networkit_add_module(community
     IsolatedInterpartitionConductance.cpp
     IsolatedInterpartitionExpansion.cpp
     JaccardMeasure.cpp
+    LFM.cpp
     LPDegreeOrdered.cpp
     LocalCoverEvaluation.cpp
     LocalPartitionEvaluation.cpp
     Modularity.cpp
     NMIDistance.cpp
     NodeStructuralRandMeasure.cpp
+    OverlappingCommunityDetectionAlgorithm.cpp
     PLM.cpp
     PLP.cpp
     ParallelAgglomerativeClusterer.cpp
@@ -32,10 +35,12 @@ networkit_add_module(community
     SampledGraphStructuralRandMeasure.cpp
     SampledNodeStructuralRandMeasure.cpp
     StablePartitionNodes.cpp
+    LouvainMapEquation.cpp
+    ParallelLeiden.cpp
     )
 
 networkit_module_link_modules(community
-    auxiliary base coarsening components flow graph matching structures)
+    auxiliary coarsening components flow graph matching scd structures)
 
 add_subdirectory(test)
 

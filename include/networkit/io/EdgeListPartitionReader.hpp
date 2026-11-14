@@ -1,4 +1,3 @@
-// networkit-format
 
 #ifndef NETWORKIT_IO_EDGE_LIST_PARTITION_READER_HPP_
 #define NETWORKIT_IO_EDGE_LIST_PARTITION_READER_HPP_
@@ -33,7 +32,7 @@ public:
      * @param[in]  path  Path to file.
      * @return The clustering contained in the file at @a path.
      */
-    Partition read(const std::string &path);
+    Partition read(std::string_view path);
 
 private:
     node firstNode;

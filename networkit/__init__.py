@@ -20,17 +20,46 @@ and integration into the Python ecosystem of tools for data analysis and
 scientific computation.
 
 
-Usage examples can be found on https://github.com/networkit/networkit/blob/Dev/notebooks/User-Guide.ipynb
+Usage examples can be found on https://github.com/networkit/networkit/blob/master/notebooks/User-Guide.ipynb
 """
 
 __author__ = "Christian Staudt"
 __copyright__ = "Copyright (c) 2014 Christan Staudt"
-__credits__ = ["Eugenio Angriman", "Lukas Barth", "Miriam Beddig", "Elisabetta Bergamini", "Stefan Bertsch", "Pratistha Bhattarai", "Andreas Bilke", "Simon Bischof", \
-	"Fabian Brandt-Tumescheit", "Guido Brückner", "Mark Erb",  "Kolja Esders", "Patrick Flick", "Michael Hamann", "Lukas Hartmann", "Daniel Hoske", "Gerd Lindner", \
-        "Moritz v. Looz", "Yassine Marrakchi", "Henning Meyerhenke", "Manuel Penschuck", "Marcel Radermacher", "Klara Reichard", "Marvin Ritter", \
-        "Aleksejs Sazonovs", "Hung Tran", "Alexander van der Grinten", "Florian Weber", "Michael Wegner", "Jörg Weisbarth"]
+__credits__ = [
+    "Eugenio Angriman",
+    "Lukas Barth",
+    "Miriam Beddig",
+    "Elisabetta Bergamini",
+    "Stefan Bertsch",
+    "Pratistha Bhattarai",
+    "Andreas Bilke",
+    "Simon Bischof",
+    "Fabian Brandt-Tumescheit",
+    "Guido Brückner",
+    "Mark Erb",
+    "Kolja Esders",
+    "Patrick Flick",
+    "Michael Hamann",
+    "Lukas Hartmann",
+    "Daniel Hoske",
+    "Gerd Lindner",
+    "Moritz v. Looz",
+    "Yassine Marrakchi",
+    "Henning Meyerhenke",
+    "Manuel Penschuck",
+    "Lucas Archimedes Gregorio Henr Petersen",
+    "Marcel Radermacher",
+    "Klara Reichard",
+    "Marvin Ritter",
+    "Aleksejs Sazonovs",
+    "Hung Tran",
+    "Alexander van der Grinten",
+    "Florian Weber",
+    "Michael Wegner",
+    "Jörg Weisbarth",
+]
 __license__ = "MIT"
-__version__ = "8.1"
+__version__ = "11.3"
 
 # standard library modules
 import csv
@@ -40,14 +69,20 @@ import sys
 
 # pyplot might not be available in non-interactive environments.
 try:
-	import matplotlib.pyplot as _pyplot
+    import matplotlib.pyplot as _pyplot
 except ImportError:
-	have_plt = False
+    have_plt = False
 else:
-	have_plt = True
+    have_plt = True
+
+try:
+    import networkx as nx
+except ImportError:
+    have_nx = False
+else:
+    have_nx = True
 
 # local imports
-from . import stopwatch
 from . import graph
 from . import graphio
 from . import community
@@ -58,11 +93,8 @@ from . import engineering
 from . import embedding
 from . import distance
 from . import components
-from . import dynamic
 from . import gephi
-from . import partitioning
 from . import coloring
-from . import workflows
 from . import flow
 from . import sparsification
 from . import scd
@@ -75,23 +107,21 @@ from . import coarsening
 from . import reachability
 from . import simulation
 from . import stats
-from . import sampling
 from . import viz
 from . import randomization
 from . import independentset
+from . import planarity
 from .support import MissingDependencyError
 from .graphtools import GraphTools as graphtools
 
 if have_plt:
-	from . import plot
-	from .profiling import profiling
+    from . import plot
+    from .profiling import profiling
 
-try:
-	from . import viztasks
-except ImportError:
-	raise MissingDependencyError("viztasks")
+if have_nx:
+    from . import nxadapter
 
-#--------- Top Level Classes and Functions ----------------#
+# --------- Top Level Classes and Functions ----------------#
 #
 
 # Some functions and classes should be directly available from the top module
@@ -99,72 +129,89 @@ except ImportError:
 # TODO: introduce settings module
 
 # extension imports
-from .engineering import getLogLevel, setLogLevel, setPrintLocation, none, setSeed, \
-		setNumberOfThreads, getCurrentNumberOfThreads, getMaxNumberOfThreads
+from .engineering import (
+    getLogLevel,
+    setLogLevel,
+    setPrintLocation,
+    none,
+    setSeed,
+    setNumberOfThreads,
+    getCurrentNumberOfThreads,
+    getMaxNumberOfThreads,
+)
+
 # local imports into the top namespace
-from .graph import Graph
+from .graph import Graph, GraphFromCoo, GraphFromCsr
 from .structures import Partition, Cover
 from .graphio import readGraph, writeGraph, readGraphs, Format
 
 
 def overview(G):
-	"""
-		This function collects some basic information about the given graph and prints it to the terminal.
-	"""
-	n = G.numberOfNodes()
-	degrees = centrality.DegreeCentrality(
-		G, ignoreSelfLoops=G.numberOfSelfLoops() == 0).run().scores()
-	numSelfLoops = G.numberOfSelfLoops()
+    """
+    This function collects some basic information about the given graph and prints it to the terminal.
+    """
+    n = G.numberOfNodes()
+    degrees = (
+        centrality.DegreeCentrality(G, ignoreSelfLoops=G.numberOfSelfLoops() == 0)
+        .run()
+        .scores()
+    )
+    numSelfLoops = G.numberOfSelfLoops()
 
-	def getIsolatedNodes(degrees):
-		sequence = sorted(degrees)
-		i = 0
-		nIsolated = 0
-		while i < len(sequence) and sequence[i] == 0:
-			nIsolated += 1
-			i += 1
-		return nIsolated
+    def getIsolatedNodes(degrees):
+        sequence = sorted(degrees)
+        i = 0
+        nIsolated = 0
+        while i < len(sequence) and sequence[i] == 0:
+            nIsolated += 1
+            i += 1
+        return nIsolated
 
-	def getClusteringCoefficient(G):
-		lcc = centrality.LocalClusteringCoefficient(G, True).run().scores()
-		return sum(lcc) / n
+    def getClusteringCoefficient(G):
+        lcc = centrality.LocalClusteringCoefficient(G, True).run().scores()
+        return sum(lcc) / n if n else 0.0
 
-	def getComponentPartition(G):
-		if G.isDirected():
-			cc = components.StronglyConnectedComponents(G).run()
-		else:
-			cc = components.ConnectedComponents(G).run()
-		return cc.getPartition()
+    def getComponentPartition(G):
+        if G.isDirected():
+            cc = components.StronglyConnectedComponents(G).run()
+        else:
+            cc = components.ConnectedComponents(G).run()
+        return cc.getPartition()
 
-	print("Network Properties:")
-	print("nodes, edges\t\t\t{}, {}".format(n, G.numberOfEdges()))
-	print("directed?\t\t\t{}".format("True" if G.isDirected() else "False"))
-	print("weighted?\t\t\t{}".format("True" if G.isWeighted() else "False"))
-	print("isolated nodes\t\t\t{}".format(getIsolatedNodes(degrees)))
-	print("self-loops\t\t\t{}".format(numSelfLoops))
-	print("density\t\t\t\t{:.6f}".format(graphtools.density(G)))
-	if numSelfLoops == 0 and not G.isDirected():
-		print("clustering coefficient\t\t{:.6f}".format(
-			getClusteringCoefficient(G)))
-	print("min/max/avg degree\t\t{:d}, {:d}, {:.6f}".format(
-		int(min(degrees)), int(max(degrees)),
-		sum(degrees) / n))
-	print("degree assortativity\t\t{:.6f}".format(
-		correlation.Assortativity(G, degrees).run().getCoefficient()))
-	cp = getComponentPartition(G)
-	lcs = max(cp.subsetSizes())
-	print("number of connected components\t{}".format(cp.numberOfSubsets()))
-	print("size of largest component\t{} ({:.2f} %)".format(
-		lcs, 100 * lcs / n))
+    print("Network Properties:")
+    print("nodes, edges\t\t\t{}, {}".format(n, G.numberOfEdges()))
+    print("directed?\t\t\t{}".format("True" if G.isDirected() else "False"))
+    print("weighted?\t\t\t{}".format("True" if G.isWeighted() else "False"))
+    print("isolated nodes\t\t\t{}".format(getIsolatedNodes(degrees)))
+    print("self-loops\t\t\t{}".format(numSelfLoops))
+    print("density\t\t\t\t{:.6f}".format(graphtools.density(G)))
+    if numSelfLoops == 0 and not G.isDirected():
+        print("clustering coefficient\t\t{:.6f}".format(getClusteringCoefficient(G)))
+    print(
+        "min/max/avg degree\t\t{:d}, {:d}, {:.6f}".format(
+            int(min(degrees, default=0)),
+            int(max(degrees, default=0)),
+            sum(degrees) / n if n else 0.0,
+        )
+    )
+    print(
+        "degree assortativity\t\t{:.6f}".format(
+            correlation.Assortativity(G, degrees).run().getCoefficient()
+        )
+    )
+    cp = getComponentPartition(G)
+    lcs = max(cp.subsetSizes(), default=0)
+    print("number of connected components\t{}".format(cp.numberOfSubsets()))
+    print("size of largest component\t{} ({:.2f} %)".format(lcs, 100 * lcs / n if n else 0.0))
 
 
-#-------- Setup ---------- #
+# -------- Setup ---------- #
 
 
 def setup():
-	""" This function is run once on module import to configure initial settings """
-	setLogLevel("ERROR")  # set default loglevel for C++ code
-	setPrintLocation(True)
+    """This function is run once on module import to configure initial settings"""
+    setLogLevel("ERROR")  # set default loglevel for C++ code
+    setPrintLocation(True)
 
 
 setup()  # here the setup function is called once on import

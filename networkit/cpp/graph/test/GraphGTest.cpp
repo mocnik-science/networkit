@@ -8,16 +8,17 @@
 
 #include <algorithm>
 #include <tuple>
+#include <unordered_map>
 
 #include <gtest/gtest.h>
 
 #include <networkit/auxiliary/Log.hpp>
 #include <networkit/auxiliary/NumericTools.hpp>
 #include <networkit/auxiliary/Parallel.hpp>
+#include <networkit/generators/ErdosRenyiGenerator.hpp>
 #include <networkit/graph/Graph.hpp>
 #include <networkit/graph/GraphBuilder.hpp>
 #include <networkit/graph/GraphTools.hpp>
-#include <networkit/generators/ErdosRenyiGenerator.hpp>
 #include <networkit/io/METISGraphReader.hpp>
 
 namespace NetworKit {
@@ -45,13 +46,17 @@ protected:
     count countSelfLoopsManually(const Graph &G);
 };
 
-INSTANTIATE_TEST_SUITE_P(InstantiationName, GraphGTest, testing::Values(std::make_tuple(false, false),
-                        std::make_tuple(true, false),
-                        std::make_tuple(false, true),
-                        std::make_tuple(true, true)));
+INSTANTIATE_TEST_SUITE_P(InstantiationName, GraphGTest,
+                         testing::Values(std::make_tuple(false, false),
+                                         std::make_tuple(true, false), std::make_tuple(false, true),
+                                         std::make_tuple(true, true)));
 
-bool GraphGTest::isWeighted() const { return std::get<0>(GetParam()); }
-bool GraphGTest::isDirected() const { return std::get<1>(GetParam()); }
+bool GraphGTest::isWeighted() const {
+    return std::get<0>(GetParam());
+}
+bool GraphGTest::isDirected() const {
+    return std::get<1>(GetParam());
+}
 
 Graph GraphGTest::createGraph(count n) const {
     bool weighted, directed;
@@ -62,11 +67,13 @@ Graph GraphGTest::createGraph(count n) const {
 
 Graph GraphGTest::createGraph(count n, count m) const {
     auto G = createGraph(n);
-    while(G.numberOfEdges() < m) {
+    while (G.numberOfEdges() < m) {
         const auto u = Aux::Random::index(n);
         const auto v = Aux::Random::index(n);
-        if (u == v) continue;
-        if (G.hasEdge(u, v)) continue;
+        if (u == v)
+            continue;
+        if (G.hasEdge(u, v))
+            continue;
 
         const auto p = Aux::Random::probability();
         G.addEdge(u, v, p);
@@ -104,8 +111,7 @@ void GraphGTest::SetUp() {
     m_house = 8;
 
     Ghouse = createGraph(5);
-    houseEdgesOut = {{3, 1}, {1, 0}, {0, 2}, {2, 1},
-                     {1, 4}, {4, 3}, {3, 2}, {2, 4}};
+    houseEdgesOut = {{3, 1}, {1, 0}, {0, 2}, {2, 1}, {1, 4}, {4, 3}, {3, 2}, {2, 4}};
     Ahouse = {n_house, std::vector<edgeweight>(n_house, 0.0)};
     edgeweight ew = 1.0;
     for (auto &e : houseEdgesOut) {
@@ -126,6 +132,33 @@ void GraphGTest::SetUp() {
 }
 
 /** CONSTRUCTORS **/
+
+TEST(GraphGTest, testDefConstructorWithUndirIndex) {
+    // Test indexed + undirected graph
+    Graph GUndir(3, false, false, true);
+    GUndir.addEdge(0, 1);
+    EXPECT_EQ(GUndir.edgeId(0, 1), 0);
+    EXPECT_EQ(GUndir.edgeId(1, 0), 0);
+}
+
+TEST(GraphGTest, testDefConstructorWithDirIndex) {
+    // Test indexed + directed graph
+    Graph GDir(3, false, true, true);
+    GDir.addEdge(0, 1);
+    EXPECT_EQ(GDir.edgeId(0, 1), 0);
+}
+
+TEST_P(GraphGTest, testCopyConstructorWithIndexedEdgeIds) {
+    Graph G(3, false, false, true);
+    G.addEdge(0, 1);
+    G.addEdge(1, 2);
+    G.indexEdges(true);
+
+    Graph GCopy(G, isWeighted(), isDirected(), true);
+    EXPECT_TRUE(GCopy.hasEdgeIds());
+    EXPECT_TRUE(GCopy.hasEdge(0, 1));
+    EXPECT_TRUE(GCopy.hasEdge(1, 2));
+}
 
 TEST_P(GraphGTest, testCopyConstructor) {
     Graph G = Graph(this->Ghouse, false, false);
@@ -171,13 +204,12 @@ TEST_P(GraphGTest, testCopyConstructor) {
         ASSERT_EQ(defaultEdgeWeight, G.weight(u, v));
 
         auto e = std::make_pair(u, v);
-        bool found =
-            std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(), e) !=
-            this->houseEdgesOut.end();
+        bool found = std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(), e)
+                     != this->houseEdgesOut.end();
         if (!found) {
             e = std::make_pair(v, u);
-            found = std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(),
-                              e) != this->houseEdgesOut.end();
+            found = std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(), e)
+                    != this->houseEdgesOut.end();
         }
         ASSERT_TRUE(found);
         m++;
@@ -190,13 +222,12 @@ TEST_P(GraphGTest, testCopyConstructor) {
         ASSERT_EQ(GW.weight(u, v), GW.weight(v, u));
 
         auto e = std::make_pair(u, v);
-        bool found =
-            std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(), e) !=
-            this->houseEdgesOut.end();
+        bool found = std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(), e)
+                     != this->houseEdgesOut.end();
         if (!found) {
             e = std::make_pair(v, u);
-            found = std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(),
-                              e) != this->houseEdgesOut.end();
+            found = std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(), e)
+                    != this->houseEdgesOut.end();
             ASSERT_EQ(this->Ghouse.weight(v, u), GW.weight(v, u));
         } else {
             ASSERT_EQ(this->Ghouse.weight(u, v), GW.weight(u, v));
@@ -211,16 +242,15 @@ TEST_P(GraphGTest, testCopyConstructor) {
         ASSERT_EQ(defaultEdgeWeight, D.weight(u, v));
 
         auto e = std::make_pair(u, v);
-        bool found =
-            std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(), e) !=
-            this->houseEdgesOut.end();
+        bool found = std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(), e)
+                     != this->houseEdgesOut.end();
         if (!this->Ghouse.isDirected()) {
             ASSERT_TRUE(D.hasEdge(v, u));
 
             e = std::make_pair(v, u);
-            found = found ||
-                    (std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(),
-                               e) != this->houseEdgesOut.end());
+            found = found
+                    || (std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(), e)
+                        != this->houseEdgesOut.end());
         } else {
             ASSERT_FALSE(D.hasEdge(v, u));
         }
@@ -235,15 +265,14 @@ TEST_P(GraphGTest, testCopyConstructor) {
         ASSERT_EQ(this->Ghouse.weight(u, v), DW.weight(u, v));
 
         auto e = std::make_pair(u, v);
-        bool found =
-            std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(), e) !=
-            this->houseEdgesOut.end();
+        bool found = std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(), e)
+                     != this->houseEdgesOut.end();
         if (!this->Ghouse.isDirected()) {
             ASSERT_TRUE(DW.hasEdge(v, u));
             e = std::make_pair(v, u);
-            found = found ||
-                    (std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(),
-                               e) != this->houseEdgesOut.end());
+            found = found
+                    || (std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(), e)
+                        != this->houseEdgesOut.end());
         } else {
             ASSERT_FALSE(DW.hasEdge(v, u));
         }
@@ -524,8 +553,7 @@ TEST_P(GraphGTest, testWeightedDegree3) {
         Aux::Random::setSeed(seed, false);
         auto G = ErdosRenyiGenerator(n, p, isDirected()).generate();
         if (isWeighted()) {
-            G = Graph(G, true, G.isDirected());
-            G.forEdges([&](node u, node v) { G.setWeight(u, v, Aux::Random::probability()); });
+            GraphTools::randomizeWeights(G);
         }
         G.forNodes([&](node u) {
             edgeweight wDeg = 0, wDegTwice = 0;
@@ -681,8 +709,7 @@ TEST_P(GraphGTest, testRemoveEdge) {
     G.addEdge(1, 1);
 
     if (G.isWeighted()) {
-        EXPECT_NEAR(ewBefore + 3.14 + 2 * defaultEdgeWeight, G.totalEdgeWeight(),
-                    epsilon);
+        EXPECT_NEAR(ewBefore + 3.14 + 2 * defaultEdgeWeight, G.totalEdgeWeight(), epsilon);
     } else {
         EXPECT_NEAR(ewBefore + 3 * defaultEdgeWeight, G.totalEdgeWeight(), epsilon);
     }
@@ -700,8 +727,7 @@ TEST_P(GraphGTest, testRemoveEdge) {
     G.removeEdge(1, 1);
 
     if (G.isWeighted()) {
-        EXPECT_NEAR(ewBefore - defaultEdgeWeight - 3.14, G.totalEdgeWeight(),
-                    epsilon);
+        EXPECT_NEAR(ewBefore - defaultEdgeWeight - 3.14, G.totalEdgeWeight(), epsilon);
     } else {
         EXPECT_NEAR(ewBefore - 2 * defaultEdgeWeight, G.totalEdgeWeight(), epsilon)
             << "Weighted, directed: " << G.isWeighted() << ", " << G.isDirected();
@@ -778,9 +804,7 @@ TEST_P(GraphGTest, testRemoveMultiEdges) {
         std::vector<std::pair<node, node>> edges;
         edges.reserve(G.numberOfEdges());
 
-        G.forEdges([&](const node u, const node v) {
-            edges.push_back({u, v});
-        });
+        G.forEdges([&](const node u, const node v) { edges.push_back({u, v}); });
 
         return edges;
     };
@@ -827,8 +851,7 @@ TEST_P(GraphGTest, testRemoveMultiEdges) {
 
 TEST_P(GraphGTest, testHasEdge) {
     auto containsEdge = [&](std::pair<node, node> e) {
-        auto it =
-            std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(), e);
+        auto it = std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(), e);
         return it != this->houseEdgesOut.end();
     };
 
@@ -939,7 +962,7 @@ TEST_P(GraphGTest, testSelfLoopConversion) {
             if (p < 0.1) { // new node
                 n++;
                 G.addNode();
-            } else {                                   // new edge
+            } else {                                     // new edge
                 node u = Aux::Random::integer(v, n - 1); // self-loops possible
                 G.addEdge(v, u);
             }
@@ -984,9 +1007,8 @@ TEST_P(GraphGTest, testCheckConsistency_MultiEdgeDetection) {
 
 TEST_P(GraphGTest, testWeight) {
     this->Ghouse.forNodes([&](node u) {
-        this->Ghouse.forNodes([&](node v) {
-            ASSERT_EQ(this->Ahouse[u][v], this->Ghouse.weight(u, v));
-        });
+        this->Ghouse.forNodes(
+            [&](node v) { ASSERT_EQ(this->Ahouse[u][v], this->Ghouse.weight(u, v)); });
     });
 }
 
@@ -1117,7 +1139,7 @@ TEST_P(GraphGTest, testNodeIterator) {
     auto testBackward = [](const Graph &G) {
         const std::vector<node> nodes(Graph::NodeRange(G).begin(), Graph::NodeRange(G).end());
         std::vector<node> v;
-        G.forNodes([&](node u) {v.push_back(u);});
+        G.forNodes([&](node u) { v.push_back(u); });
 
         ASSERT_EQ(std::unordered_set<node>(nodes.begin(), nodes.end()).size(), nodes.size());
         ASSERT_EQ(nodes.size(), G.numberOfNodes());
@@ -1342,11 +1364,8 @@ TEST_P(GraphGTest, testForNodes) {
 }
 
 TEST_P(GraphGTest, testParallelForNodes) {
-    std::vector<node> visited;
-    this->Ghouse.parallelForNodes([&](node u) {
-#pragma omp critical
-        visited.push_back(u);
-    });
+    std::vector<node> visited(Ghouse.upperNodeIdBound());
+    this->Ghouse.parallelForNodes([&](node u) { visited[u] = u; });
 
     Aux::Parallel::sort(visited.begin(), visited.end());
 
@@ -1362,8 +1381,7 @@ TEST_P(GraphGTest, forNodesWhile) {
     count stopAfter = 10;
     count nodesSeen = 0;
 
-    G.forNodesWhile([&]() { return nodesSeen < stopAfter; },
-                    [&](node) { nodesSeen++; });
+    G.forNodesWhile([&]() { return nodesSeen < stopAfter; }, [&](node) { nodesSeen++; });
 
     ASSERT_EQ(stopAfter, nodesSeen);
 }
@@ -1533,9 +1551,8 @@ TEST_P(GraphGTest, testForNeighborsOf) {
 
 TEST_P(GraphGTest, testForWeightedNeighborsOf) {
     std::vector<std::pair<node, edgeweight>> visited;
-    this->Ghouse.forNeighborsOf(3, [&](node u, edgeweight ew) {
-        visited.push_back(std::make_pair(u, ew));
-    });
+    this->Ghouse.forNeighborsOf(
+        3, [&](node u, edgeweight ew) { visited.push_back(std::make_pair(u, ew)); });
 
     // should sort after the first element
     Aux::Parallel::sort(visited.begin(), visited.end());
@@ -1588,12 +1605,10 @@ TEST_P(GraphGTest, testForEdgesOf) {
             EXPECT_EQ(u, v);
 
             auto e = std::make_pair(v, w);
-            auto it =
-                std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(), e);
+            auto it = std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(), e);
             if (!isDirected() && it == this->houseEdgesOut.end()) {
                 auto e2 = std::make_pair(w, v);
-                it = std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(),
-                               e2);
+                it = std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(), e2);
             }
 
             EXPECT_TRUE(it != this->houseEdgesOut.end());
@@ -1638,12 +1653,10 @@ TEST_P(GraphGTest, testForWeightedEdgesOf) {
             EXPECT_EQ(u, v);
             sumOfWeights += ew;
             auto e = std::make_pair(v, w);
-            auto it =
-                std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(), e);
+            auto it = std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(), e);
             if (!isDirected() && it == this->houseEdgesOut.end()) {
                 auto e2 = std::make_pair(w, v);
-                it = std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(),
-                               e2);
+                it = std::find(this->houseEdgesOut.begin(), this->houseEdgesOut.end(), e2);
             }
 
             EXPECT_TRUE(it != this->houseEdgesOut.end());
@@ -1716,9 +1729,7 @@ TEST_P(GraphGTest, testForInNeighborsOf) {
 
 TEST_P(GraphGTest, testForWeightedInNeighborsOf) {
     std::vector<std::pair<node, edgeweight>> visited;
-    this->Ghouse.forInNeighborsOf(3, [&](node v, edgeweight ew) {
-        visited.push_back({v, ew});
-    });
+    this->Ghouse.forInNeighborsOf(3, [&](node v, edgeweight ew) { visited.push_back({v, ew}); });
     Aux::Parallel::sort(visited.begin(), visited.end());
 
     if (isGraph()) {
@@ -1754,14 +1765,16 @@ TEST_P(GraphGTest, testForWeightedInNeighborsOf) {
     }
 }
 
-TEST_P(GraphGTest, forInEdgesOf) {
+TEST_P(GraphGTest, testForInEdgesOf) {
     std::vector<bool> visited(this->n_house, false);
     this->Ghouse.forInEdgesOf(3, [&](node u, node v) {
-        ASSERT_EQ(3u, v);
-        ASSERT_TRUE(this->Ahouse[u][v] > 0.0);
-        ASSERT_TRUE(this->Ghouse.hasEdge(u, v));
-        ASSERT_FALSE(visited[u]);
-        visited[u] = true;
+        ASSERT_EQ(3u, u);
+        if (isDirected()) {
+            ASSERT_TRUE(this->Ahouse[v][u] > 0.0);
+            ASSERT_TRUE(this->Ghouse.hasEdge(v, u));
+        }
+        ASSERT_FALSE(visited[v]);
+        visited[v] = true;
     });
 
     if (isDirected()) {
@@ -1835,8 +1848,8 @@ TEST_P(GraphGTest, testParallelSumForNodes) {
 }
 
 TEST_P(GraphGTest, testParallelSumForWeightedEdges) {
-    double sum = this->Ghouse.parallelSumForEdges(
-        [](node, node, edgeweight ew) { return 1.5 * ew; });
+    double sum =
+        this->Ghouse.parallelSumForEdges([](node, node, edgeweight ew) { return 1.5 * ew; });
 
     double expected_sum = 1.5 * this->Ghouse.totalEdgeWeight();
     ASSERT_EQ(expected_sum, sum);
@@ -1909,6 +1922,29 @@ TEST_P(GraphGTest, testEdgeIndexGenerationUndirected) {
     });
 }
 
+TEST_P(GraphGTest, testEdgeIndexResolver) {
+    Graph G = createGraph(10);
+    G.indexEdges();
+
+    G.addEdge(0, 0);
+    G.addEdge(5, 6);
+    G.addEdge(2, 2);
+
+    if (G.isDirected())
+        G.addEdge(3, 2);
+
+    std::map<std::pair<node, node>, edgeid> expectedEdges;
+    expectedEdges[std::make_pair(0, 0)] = 0;
+    expectedEdges[std::make_pair(5, 6)] = 1;
+    expectedEdges[std::make_pair(2, 2)] = 2;
+    expectedEdges[std::make_pair(3, 2)] = 3;
+
+    G.forEdges([&](node, node, edgeid eid) {
+        auto edge = G.edgeById(eid);
+        EXPECT_EQ(expectedEdges[edge], eid);
+    });
+}
+
 TEST_P(GraphGTest, testForEdgesWithIds) {
     std::vector<Graph> graphs;
     graphs.emplace_back(10, false, false);
@@ -1925,7 +1961,7 @@ TEST_P(GraphGTest, testForEdgesWithIds) {
 
         count m = 0;
         graph->forEdges([&](node, node, edgeid eid) {
-            EXPECT_EQ(0, eid);
+            EXPECT_EQ(none, eid);
             m++;
         });
         ASSERT_EQ(3u, m);
@@ -1961,7 +1997,7 @@ TEST_P(GraphGTest, testForWeightedEdgesWithIds) {
         count m = 0;
         edgeweight sum = 0;
         graph->forEdges([&](node, node, edgeweight ew, edgeid eid) {
-            EXPECT_EQ(0, eid);
+            EXPECT_EQ(none, eid);
             m++;
             sum += ew;
         });
@@ -2013,10 +2049,8 @@ TEST_P(GraphGTest, testParallelForEdgesWithIds) {
         graph->parallelForEdges([&](node, node, edgeid eid) {
 #pragma omp atomic
             m++;
-#pragma omp atomic
-            sumedgeid += eid;
+            ASSERT_EQ(none, eid);
         });
-        ASSERT_EQ(0, sumedgeid);
         ASSERT_EQ(3u, m);
 
         // With edge indices
@@ -2031,10 +2065,10 @@ TEST_P(GraphGTest, testParallelForEdgesWithIds) {
 #pragma omp atomic
             sumedgeid += eid;
 #pragma omp atomic
-            m++;        
+            m++;
         });
         ASSERT_EQ(expectedId, graph->upperEdgeIdBound());
-        ASSERT_EQ(sumedgeid, ((graph->upperEdgeIdBound()-1) * graph->upperEdgeIdBound()) / 2);
+        ASSERT_EQ(sumedgeid, ((graph->upperEdgeIdBound() - 1) * graph->upperEdgeIdBound()) / 2);
         ASSERT_EQ(3u, m);
     }
 }
@@ -2061,10 +2095,8 @@ TEST_P(GraphGTest, testParallelForWeightedEdgesWithIds) {
             m++;
 #pragma omp atomic
             sum += ew;
-#pragma omp atomic
-            sumedgeid += eid;
+            ASSERT_EQ(none, eid);
         });
-        ASSERT_EQ(0, sumedgeid);
         ASSERT_EQ(3u, m);
 
         if (graph->isWeighted()) {
@@ -2091,7 +2123,7 @@ TEST_P(GraphGTest, testParallelForWeightedEdgesWithIds) {
             sum += ew;
         });
         ASSERT_EQ(expectedId, graph->upperEdgeIdBound());
-        ASSERT_EQ(sumedgeid, ((graph->upperEdgeIdBound()-1) * graph->upperEdgeIdBound()) / 2);
+        ASSERT_EQ(sumedgeid, ((graph->upperEdgeIdBound() - 1) * graph->upperEdgeIdBound()) / 2);
         ASSERT_EQ(3u, m);
 
         if (graph->isWeighted()) {
@@ -2149,32 +2181,6 @@ w)) {
 }
 */
 
-TEST_P(GraphGTest, testCompactEdges) {
-    Graph G = this->Ghouse;
-    G.indexEdges();
-
-    G.addEdge(0, 4);
-    G.addEdge(0, 3);
-    G.removeEdge(0, 3);
-    G.removeEdge(0, 4);
-
-    G.compactEdges();
-
-    std::vector<std::pair<node, node>> outEdges;
-    outEdges.reserve(this->Ghouse.numberOfEdges());
-
-    this->Ghouse.forEdges([&](node u, node v) { outEdges.emplace_back(u, v); });
-
-    auto it = outEdges.begin();
-
-    G.forEdges([&](node u, node v) {
-        ASSERT_NE(it, outEdges.end());
-        EXPECT_EQ(it->first, u);
-        EXPECT_EQ(it->second, v);
-        ++it;
-    });
-}
-
 TEST_P(GraphGTest, testSortEdges) {
     Graph G = this->Ghouse;
 
@@ -2224,53 +2230,617 @@ TEST_P(GraphGTest, testSortEdges) {
                 ASSERT_NE(it, edges.end());
                 EXPECT_EQ(*it, std::make_tuple(u, v, w, eid))
                     << "Out edge (" << u << ", " << v << ", " << w << ", " << eid
-                    << ") was expected to be (" << std::get<0>(*it) << ", "
-                    << std::get<1>(*it) << ", " << std::get<2>(*it) << ", "
-                    << std::get<3>(*it) << ")";
+                    << ") was expected to be (" << std::get<0>(*it) << ", " << std::get<1>(*it)
+                    << ", " << std::get<2>(*it) << ", " << std::get<3>(*it) << ")";
                 ++it;
             });
             G.forInEdgesOf(u, [&](node u, node v, edgeweight w, edgeid eid) {
                 ASSERT_NE(it, edges.end());
                 EXPECT_EQ(*it, std::make_tuple(u, v, w, eid))
                     << "In edge (" << u << ", " << v << ", " << w << ", " << eid
-                    << ") was expected to be (" << std::get<0>(*it) << ", "
-                    << std::get<1>(*it) << ", " << std::get<2>(*it) << ", "
-                    << std::get<3>(*it) << ")";
+                    << ") was expected to be (" << std::get<0>(*it) << ", " << std::get<1>(*it)
+                    << ", " << std::get<2>(*it) << ", " << std::get<3>(*it) << ")";
                 ++it;
             });
         });
     }
 }
 
-TEST_P(GraphGTest, testEdgeIdsAfterRemove) {
+TEST_P(GraphGTest, testEdgeIdsSortingAfterRemove) {
     constexpr node n = 100;
 
     Aux::Random::setSeed(42, true);
-    auto G = createGraph(n, 10*n);
+    auto G = createGraph(n, 10 * n);
+    G.sortEdges();
+    G.indexEdges();
+    auto original = G;
+
+    // remove edges
+    while (2 * G.numberOfEdges() > original.numberOfEdges()) {
+        const auto e = GraphTools::randomEdge(G, false);
+        G.setKeepEdgesSorted();
+        G.removeEdge(e.first, e.second);        // with sorting after each removal
+        original.removeEdge(e.first, e.second); // without sorting
+    }
+
+    original.sortEdges(); // calling sort only once
+
+    G.forNodes([&](node u) {
+        std::vector<node> allNeighborsOfG;
+
+        G.forNeighborsOf(u,
+                         [&](node, node v, edgeweight, edgeid) { allNeighborsOfG.push_back(v); });
+
+        std::vector<node> allNeighborsOfOriginal;
+
+        original.forNeighborsOf(
+            u, [&](node, node v, edgeweight, edgeid) { allNeighborsOfOriginal.push_back(v); });
+
+        // check that both neighbor vectors are equivalent
+        EXPECT_EQ(allNeighborsOfG.size(), allNeighborsOfOriginal.size());
+        for (index i = 0; i < allNeighborsOfG.size(); ++i) {
+            EXPECT_EQ(allNeighborsOfG[i], allNeighborsOfOriginal[i]);
+        }
+
+        if (!isDirected())
+            return;
+
+        // directed
+
+        std::vector<node> allInNeighborsOfG;
+
+        G.forInNeighborsOf(
+            u, [&](node, node v, edgeweight, edgeid) { allInNeighborsOfG.push_back(v); });
+        std::vector<node> allInNeighborsOfOriginal;
+
+        original.forInNeighborsOf(
+            u, [&](node, node v, edgeweight, edgeid) { allInNeighborsOfOriginal.push_back(v); });
+
+        // check that both in-neighbor vectors are equivalent
+        EXPECT_EQ(allInNeighborsOfG.size(), allInNeighborsOfOriginal.size());
+        for (index i = 0; i < allInNeighborsOfG.size(); ++i) {
+            EXPECT_EQ(allInNeighborsOfG[i], allInNeighborsOfOriginal[i]);
+        }
+    });
+}
+
+TEST_P(GraphGTest, testEdgeIdsConsistencyAfterRemove) {
+    constexpr node n = 100;
+
+    Aux::Random::setSeed(42, true);
+    auto G = createGraph(n, 10 * n);
+    G.sortEdges();
+    G.indexEdges();
+    auto original = G;
+
+    // remove edges
+    G.setMaintainCompactEdges();
+    while (2 * G.numberOfEdges() > original.numberOfEdges()) {
+        const auto e = GraphTools::randomEdge(G, false);
+        G.removeEdge(e.first, e.second);        // re-indexing after each removal
+        original.removeEdge(e.first, e.second); // not re-indexing
+    }
+
+    original.indexEdges(true); // re-indexing only once
+
+    std::vector<bool> existingIDs(G.upperEdgeIdBound(), false);
+
+    G.forNodes([&](node u) {
+        G.forNeighborsOf(u, [&](node, node v, edgeweight, edgeid id) {
+            existingIDs[id] = true;
+            // check that both graphs have the same edge IDs
+            ASSERT_EQ(id, original.edgeId(u, v));
+        });
+
+        if (!isDirected())
+            return;
+
+        G.forInNeighborsOf(
+            u, [&](node, node v, edgeweight, edgeid id) { ASSERT_EQ(id, original.edgeId(v, u)); });
+    });
+
+    // check that all IDs exist without gaps in between
+    for (auto ID : existingIDs) {
+        ASSERT_TRUE(ID);
+    }
+}
+
+TEST_P(GraphGTest, testEdgeIdsAfterRemoveWithoutSortingOrIDs) {
+    constexpr node n = 100;
+
+    Aux::Random::setSeed(42, true);
+    auto G = createGraph(n, 10 * n);
     G.indexEdges();
     auto original = G;
 
     // remove some nodes and edges
     G.removeNode(5);
     G.removeNode(10);
-    while(2*G.numberOfEdges() > original.numberOfEdges()) {
+    while (2 * G.numberOfEdges() > original.numberOfEdges()) {
         const auto e = GraphTools::randomEdge(G, false);
         G.removeEdge(e.first, e.second);
     }
     ASSERT_GT(G.numberOfEdges(), original.numberOfEdges() / 3);
 
     // check that the remaining edges still have the same ids
-    G.forNodes([&] (node u) {
-        G.forNeighborsOf(u, [&] (node, node v, edgeweight, edgeid id) {
-            ASSERT_EQ(id, original.edgeId(u, v));
-        });
+    G.forNodes([&](node u) {
+        G.forNeighborsOf(
+            u, [&](node, node v, edgeweight, edgeid id) { ASSERT_EQ(id, original.edgeId(u, v)); });
 
-        if (!isDirected()) return;
+        if (!isDirected())
+            return;
 
-        G.forInNeighborsOf(u, [&] (node, node v, edgeweight, edgeid id) {
-            ASSERT_EQ(id, original.edgeId(v, u));
+        G.forInNeighborsOf(
+            u, [&](node, node v, edgeweight, edgeid id) { ASSERT_EQ(id, original.edgeId(v, u)); });
+    });
+}
+
+TEST(GraphGTest, testSortNeighborsUndirectedGraph) {
+    Graph G(6);
+    G.addEdge(0, 3);
+    G.addEdge(0, 5);
+    G.addEdge(0, 4);
+    G.addEdge(1, 3);
+    G.addEdge(1, 5);
+    G.addEdge(1, 4);
+    G.addEdge(2, 5);
+    G.addEdge(2, 4);
+    G.addEdge(2, 3);
+    G.addEdge(4, 3);
+    G.addEdge(4, 5);
+
+    std::unordered_map<node, std::vector<node>> originalNeighbors;
+
+    G.forNodes([&](const node currentNode) {
+        originalNeighbors[currentNode] = std::vector<node>(G.neighborRange(currentNode).begin(),
+                                                           G.neighborRange(currentNode).end());
+    });
+
+    // Sort neighbors
+    G.forNodes([&](const node currentNode) {
+        G.sortNeighbors(currentNode, [&](const node neighbor1, const node neighbor2) {
+            return neighbor1 < neighbor2;
         });
     });
+
+    // Validate sorting for outgoing neighbors
+    G.forNodes([&](const node currentNode) {
+        const auto &sortedNeighbors = G.neighborRange(currentNode);
+        std::vector<node> sortedNeighborVector(sortedNeighbors.begin(), sortedNeighbors.end());
+        EXPECT_TRUE(std::ranges::is_sorted(sortedNeighborVector));
+        if (!std::ranges::is_sorted(originalNeighbors[currentNode])) {
+            EXPECT_NE(originalNeighbors[currentNode], sortedNeighborVector);
+        }
+    });
+}
+
+TEST(GraphGTest, testSortNeighborsUndirectedIndexedGraph) {
+    Graph G(6);
+    G.addEdge(0, 3);
+    G.addEdge(0, 5);
+    G.addEdge(0, 4);
+    G.addEdge(1, 3);
+    G.addEdge(1, 5);
+    G.addEdge(1, 4);
+    G.addEdge(2, 5);
+    G.addEdge(2, 4);
+    G.addEdge(2, 3);
+    G.indexEdges();
+
+    std::unordered_map<node, std::vector<node>> originalNeighbors;
+    std::unordered_map<node, std::vector<edgeid>> originalEdgeIds;
+
+    G.forNodes([&](const node currentNode) {
+        originalNeighbors[currentNode] = std::vector<node>(G.neighborRange(currentNode).begin(),
+                                                           G.neighborRange(currentNode).end());
+        for (size_t i = 0; i < G.degreeOut(currentNode); ++i) {
+            originalEdgeIds[currentNode].push_back(G.getIthNeighborWithId(currentNode, i).second);
+        }
+    });
+
+    // Sort neighbors
+    G.forNodes([&](const node currentNode) {
+        G.sortNeighbors(currentNode, [&](const node neighbor1, const node neighbor2) {
+            return neighbor1 < neighbor2;
+        });
+    });
+
+    G.forNodes([&](const node currentNode) {
+        const auto &sortedNeighbors = G.neighborRange(currentNode);
+        std::vector<node> sortedNeighborVector(sortedNeighbors.begin(), sortedNeighbors.end());
+        EXPECT_TRUE(std::ranges::is_sorted(sortedNeighborVector));
+        if (!std::ranges::is_sorted(originalNeighbors[currentNode])) {
+            EXPECT_NE(originalNeighbors[currentNode], sortedNeighborVector);
+        }
+
+        // Validate that indices are sorted according to the sorting of the neighbors
+        for (size_t i = 0; i < sortedNeighborVector.size(); ++i) {
+            node neighbor = sortedNeighborVector[i];
+            auto it = std::ranges::find(originalNeighbors[currentNode], neighbor);
+            EXPECT_NE(it, originalNeighbors[currentNode].end());
+            size_t originalIndex = std::distance(originalNeighbors[currentNode].begin(), it);
+            EXPECT_EQ(G.getIthNeighborWithId(currentNode, i).second,
+                      originalEdgeIds[currentNode][originalIndex]);
+        }
+    });
+}
+
+TEST(GraphGTest, testSortNeighborsWeightedUndirectedGraphByWeights) {
+    Graph G(6, true);
+    G.addEdge(0, 3, 9.0);
+    G.addEdge(0, 5, 7.0);
+    G.addEdge(0, 4, 8.0);
+    G.addEdge(1, 5, 1.0);
+    G.addEdge(1, 4, 3.0);
+    G.addEdge(1, 3, 4.0);
+    G.addEdge(2, 5, 5.0);
+    G.addEdge(2, 4, 2.0);
+    G.addEdge(2, 3, 6.0);
+    G.addEdge(3, 4, 7.0);
+
+    G.forNodes([&](const node currentNode) {
+        G.sortNeighbors(currentNode, [&](const node neighbor1, const node neighbor2) {
+            return G.weight(currentNode, neighbor1) < G.weight(currentNode, neighbor2);
+        });
+    });
+
+    // Validate that neighbors are sorted according to weights
+    G.forNodes([&](const node currentNode) {
+        const auto sortedNeighbors = G.neighborRange(currentNode);
+        std::vector<edgeweight> sortedWeights;
+        for (const node neighbor : sortedNeighbors) {
+            sortedWeights.push_back(G.weight(currentNode, neighbor));
+        }
+        // Ensure weights are sorted in ascending order
+        EXPECT_TRUE(std::ranges::is_sorted(sortedWeights.begin(), sortedWeights.end()));
+    });
+}
+
+TEST(GraphGTest, testSortNeighborsDirectedGraph) {
+    Graph G(6, false, true);
+    G.addEdge(0, 3);
+    G.addEdge(0, 5);
+    G.addEdge(0, 4);
+    G.addEdge(1, 3);
+    G.addEdge(1, 5);
+    G.addEdge(1, 4);
+    G.addEdge(5, 2);
+    G.addEdge(3, 2);
+    G.addEdge(4, 2);
+
+    std::unordered_map<node, std::vector<node>> originalNeighbors;
+    std::unordered_map<node, std::vector<node>> originalInNeighbors;
+    G.forNodes([&](const node currentNode) {
+        originalNeighbors[currentNode] = std::vector<node>(G.neighborRange(currentNode).begin(),
+                                                           G.neighborRange(currentNode).end());
+        originalInNeighbors[currentNode] = std::vector<node>(G.inNeighborRange(currentNode).begin(),
+                                                             G.inNeighborRange(currentNode).end());
+    });
+
+    // Sort neighbors
+    G.forNodes([&](const node currentNode) {
+        G.sortNeighbors(currentNode, [&](const node neighbor1, const node neighbor2) {
+            return neighbor1 < neighbor2;
+        });
+    });
+
+    G.forNodes([&](const node currentNode) {
+        // Validate sorting of outgoing neighbors
+        const auto &sortedNeighbors = G.neighborRange(currentNode);
+        std::vector<node> sortedNeighborVector(sortedNeighbors.begin(), sortedNeighbors.end());
+        EXPECT_TRUE(std::ranges::is_sorted(sortedNeighborVector));
+        if (!std::ranges::is_sorted(originalNeighbors[currentNode])) {
+            EXPECT_NE(originalNeighbors[currentNode], sortedNeighborVector);
+        }
+
+        // Validate sorting of incoming neighbors
+        const auto &sortedInNeighbors = G.inNeighborRange(currentNode);
+        std::vector<node> sortedInNeighborVector(sortedInNeighbors.begin(),
+                                                 sortedInNeighbors.end());
+        EXPECT_TRUE(std::ranges::is_sorted(sortedInNeighborVector));
+
+        if (!std::ranges::is_sorted(originalInNeighbors[currentNode])) {
+            EXPECT_NE(originalInNeighbors[currentNode], sortedInNeighborVector);
+        }
+    });
+}
+
+TEST(GraphGTest, testSortNeighborsWeightedDirectedGraphByWeights) {
+    Graph G(6, true, true);
+    G.addEdge(0, 3, 1.0);
+    G.addEdge(0, 5, 3.0);
+    G.addEdge(0, 4, 4.0);
+    G.addEdge(0, 1, 12.0);
+    G.addEdge(2, 1, 13.0);
+    G.addEdge(1, 3, 7.0);
+    G.addEdge(1, 5, 11.0);
+    G.addEdge(1, 4, 3.0);
+    G.addEdge(2, 5, 6.0);
+    G.addEdge(2, 3, 5.0);
+    G.addEdge(2, 4, 10.0);
+
+    // Sort neighbors according to weights
+    G.forNodes([&](const node currentNode) {
+        G.sortNeighbors(currentNode, [&](const node neighbor1, const node neighbor2) {
+            return G.weight(currentNode, neighbor1) < G.weight(currentNode, neighbor2);
+        });
+    });
+
+    // Validate that neighbors are sorted according to weights
+    G.forNodes([&](const node currentNode) {
+        const auto sortedNeighbors = G.neighborRange(currentNode);
+        std::vector<edgeweight> sortedWeights;
+        for (const node neighbor : sortedNeighbors) {
+            sortedWeights.push_back(G.weight(currentNode, neighbor));
+        }
+        // Ensure weights are sorted in ascending order
+        EXPECT_TRUE(std::ranges::is_sorted(sortedWeights.begin(), sortedWeights.end()));
+
+        const auto sortedInNeighbors = G.neighborRange(currentNode);
+        std::vector<edgeweight> sortedInWeights;
+        for (const node neighbor : sortedInNeighbors) {
+            sortedInWeights.push_back(G.weight(currentNode, neighbor));
+        }
+        // Ensure inWeights are sorted in ascending order
+        EXPECT_TRUE(std::ranges::is_sorted(sortedInWeights.begin(), sortedInWeights.end()));
+    });
+}
+
+TEST(GraphGTest, testSortNeighborsWeightedDirectedIndexedGraph) {
+    Graph G(6, true, true, true);
+    G.addEdge(0, 3, 1.0);
+    G.addEdge(0, 5, 3.0);
+    G.addEdge(0, 4, 4.0);
+    G.addEdge(0, 1, 12.0);
+    G.addEdge(2, 1, 13.0);
+    G.addEdge(1, 3, 7.0);
+    G.addEdge(1, 5, 11.0);
+    G.addEdge(1, 4, 3.0);
+    G.addEdge(2, 5, 6.0);
+    G.addEdge(2, 3, 5.0);
+    G.addEdge(2, 4, 10.0);
+    G.addEdge(5, 0, 15.0);
+
+    // Store original neighbors and weights
+    std::unordered_map<node, std::vector<node>> originalNeighbors;
+    std::unordered_map<node, std::vector<node>> originalInNeighbors;
+    std::unordered_map<node, std::vector<edgeweight>> originalWeights;
+    std::unordered_map<node, std::vector<edgeweight>> originalInWeights;
+    std::unordered_map<node, std::vector<edgeid>> originalEdgeIds;
+    std::unordered_map<node, std::vector<edgeid>> originalInEdgeIds;
+
+    G.forNodes([&](const node currentNode) {
+        originalNeighbors[currentNode] = std::vector<node>(G.neighborRange(currentNode).begin(),
+                                                           G.neighborRange(currentNode).end());
+        for (const auto &[neighbor, weight] : G.weightNeighborRange(currentNode)) {
+            originalWeights[currentNode].push_back(weight);
+        }
+        for (size_t i = 0; i < G.degreeOut(currentNode); ++i) {
+            originalEdgeIds[currentNode].push_back(G.getIthNeighborWithId(currentNode, i).second);
+        }
+
+        originalInNeighbors[currentNode] = std::vector<node>(G.inNeighborRange(currentNode).begin(),
+                                                             G.inNeighborRange(currentNode).end());
+
+        for (const auto &[neighbor, weight] : G.weightInNeighborRange(currentNode)) {
+            originalInWeights[currentNode].push_back(weight);
+        }
+        for (size_t i = 0; i < G.degreeIn(currentNode); ++i) {
+            originalInEdgeIds[currentNode].push_back(G.getIthInNeighbor(currentNode, i));
+        }
+    });
+
+    // Sort neighbors
+    G.forNodes([&](const node currentNode) {
+        G.sortNeighbors(currentNode, [&](const node neighbor1, const node neighbor2) {
+            return neighbor1 < neighbor2;
+        });
+    });
+
+    // Validate sorting for outgoing neighbors
+    G.forNodes([&](const node currentNode) {
+        const auto &sortedNeighbors = G.neighborRange(currentNode);
+        std::vector<node> sortedNeighborVector(sortedNeighbors.begin(), sortedNeighbors.end());
+        EXPECT_TRUE(std::ranges::is_sorted(sortedNeighborVector));
+
+        if (!std::ranges::is_sorted(originalNeighbors[currentNode])) {
+            EXPECT_NE(originalNeighbors[currentNode], sortedNeighborVector);
+        }
+
+        for (size_t i{}; i < sortedNeighborVector.size(); ++i) {
+            node neighbor = sortedNeighborVector[i];
+            auto it = std::ranges::find(originalNeighbors[currentNode], neighbor);
+            EXPECT_NE(it, originalNeighbors[currentNode].end());
+            size_t originalIndex = std::distance(originalNeighbors[currentNode].begin(), it);
+            EXPECT_DOUBLE_EQ(G.getIthNeighborWeight(currentNode, i),
+                             originalWeights[currentNode][originalIndex]);
+        }
+        for (size_t i = 0; i < sortedNeighborVector.size(); ++i) {
+            node neighbor = sortedNeighborVector[i];
+            auto it = std::ranges::find(originalNeighbors[currentNode], neighbor);
+            EXPECT_NE(it, originalNeighbors[currentNode].end());
+            size_t originalIndex = std::distance(originalNeighbors[currentNode].begin(), it);
+            EXPECT_EQ(G.getIthNeighborWithId(currentNode, i).second,
+                      originalEdgeIds[currentNode][originalIndex]);
+        }
+    });
+
+    // Validate sorting for incoming neighbors
+    G.forNodes([&](const node currentNode) {
+        const auto &sortedInNeighbors = G.inNeighborRange(currentNode);
+        std::vector<node> sortedInNeighborVector(sortedInNeighbors.begin(),
+                                                 sortedInNeighbors.end());
+        EXPECT_TRUE(std::ranges::is_sorted(sortedInNeighborVector));
+
+        if (!std::ranges::is_sorted(originalInNeighbors[currentNode])) {
+            EXPECT_NE(originalInNeighbors[currentNode], sortedInNeighborVector);
+        }
+
+        for (size_t i = 0; i < sortedInNeighborVector.size(); ++i) {
+            node neighbor = sortedInNeighborVector[i];
+            auto originalIterator = std::ranges::find(originalInNeighbors[currentNode], neighbor);
+            EXPECT_NE(originalIterator, originalInNeighbors[currentNode].end());
+            size_t originalIndex =
+                std::distance(originalInNeighbors[currentNode].begin(), originalIterator);
+
+            // Extract weight directly from weightInNeighborRange
+            auto weightIterator = G.weightInNeighborRange(currentNode).begin();
+            std::advance(weightIterator, i);
+            EXPECT_DOUBLE_EQ((*weightIterator).second,
+                             originalInWeights[currentNode][originalIndex]);
+        }
+        for (size_t i = 0; i < sortedInNeighborVector.size(); ++i) {
+            node neighbor = sortedInNeighborVector[i];
+            auto originalIterator = std::ranges::find(originalInNeighbors[currentNode], neighbor);
+            EXPECT_NE(originalIterator, originalInNeighbors[currentNode].end());
+            size_t originalIndex =
+                std::distance(originalInNeighbors[currentNode].begin(), originalIterator);
+            EXPECT_EQ(G.getIthInNeighbor(currentNode, i),
+                      originalInEdgeIds[currentNode][originalIndex]);
+        }
+    });
+}
+
+TEST(GraphGTest, testFromCSRDirectedUnweighted) {
+    // Hand-crafted directed graph: 0->1, 0->2, 1->2.
+    // CSR row pointers have nRows + 1 == 4 entries.
+    std::vector<index> rowIdx{0, 2, 3, 3};
+    std::vector<index> columnIdx{1, 2, 2};
+    std::vector<double> nonZeros{}; // unused for unweighted
+
+    Graph G = Graph::fromCSR(rowIdx, columnIdx, nonZeros, /* directed = */ true,
+                             /* isWeighted = */ false);
+
+    EXPECT_TRUE(G.isDirected());
+    EXPECT_FALSE(G.isWeighted());
+    EXPECT_EQ(G.numberOfNodes(), 3u);
+    EXPECT_EQ(G.numberOfEdges(), 3u);
+
+    EXPECT_TRUE(G.hasEdge(0, 1));
+    EXPECT_TRUE(G.hasEdge(0, 2));
+    EXPECT_TRUE(G.hasEdge(1, 2));
+    // Edges are directed, so the reverse directions must not exist.
+    EXPECT_FALSE(G.hasEdge(1, 0));
+    EXPECT_FALSE(G.hasEdge(2, 0));
+    EXPECT_FALSE(G.hasEdge(2, 1));
+
+    EXPECT_EQ(G.degreeOut(0), 2u);
+    EXPECT_EQ(G.degreeOut(1), 1u);
+    EXPECT_EQ(G.degreeOut(2), 0u);
+
+    EXPECT_EQ(G.degreeIn(0), 0u);
+    EXPECT_EQ(G.degreeIn(1), 1u);
+    EXPECT_EQ(G.degreeIn(2), 2u);
+}
+
+TEST(GraphGTest, testFromCSRDirectedWeighted) {
+    // Same structure as the unweighted case, now with edge weights.
+    std::vector<index> rowIdx{0, 2, 3, 3};
+    std::vector<index> columnIdx{1, 2, 2};
+    std::vector<double> nonZeros{1.5, 2.5, 3.5};
+
+    Graph G = Graph::fromCSR(rowIdx, columnIdx, nonZeros, /* directed = */ true,
+                             /* isWeighted = */ true);
+
+    EXPECT_TRUE(G.isDirected());
+    EXPECT_TRUE(G.isWeighted());
+    EXPECT_EQ(G.numberOfNodes(), 3u);
+    EXPECT_EQ(G.numberOfEdges(), 3u);
+
+    EXPECT_DOUBLE_EQ(G.weight(0, 1), 1.5);
+    EXPECT_DOUBLE_EQ(G.weight(0, 2), 2.5);
+    EXPECT_DOUBLE_EQ(G.weight(1, 2), 3.5);
+}
+
+TEST(GraphGTest, testFromCSRUndirected) {
+    // For an undirected graph each stored nonzero is one undirected edge that is
+    // stored from both endpoints; the input does not need to be symmetric. Here
+    // a triangular matrix encodes edges (0,1) and (1,2).
+    std::vector<index> rowIdx{0, 1, 2, 2};
+    std::vector<index> columnIdx{1, 2};
+    std::vector<double> nonZeros{};
+
+    Graph G = Graph::fromCSR(rowIdx, columnIdx, nonZeros, /* directed = */ false,
+                             /* isWeighted = */ false);
+
+    EXPECT_FALSE(G.isDirected());
+    EXPECT_EQ(G.numberOfNodes(), 3u);
+    // fromCSR sets the edge count to the number of stored entries (nnz).
+    EXPECT_EQ(G.numberOfEdges(), columnIdx.size());
+
+    EXPECT_TRUE(G.hasEdge(0, 1));
+    EXPECT_TRUE(G.hasEdge(1, 0));
+    EXPECT_TRUE(G.hasEdge(1, 2));
+    EXPECT_TRUE(G.hasEdge(2, 1));
+
+    EXPECT_EQ(G.degree(1), 2u);
+    // Unweighted: every edge has the default weight of 1.0.
+    EXPECT_DOUBLE_EQ(G.totalEdgeWeight(), static_cast<double>(G.numberOfEdges()));
+}
+
+TEST(GraphGTest, testFromCSRUndirectedWeighted) {
+    std::vector<index> rowIdx{0, 2, 3, 3}; // row 0: (0,1),(0,2); row 1: (1,2)
+    std::vector<index> columnIdx{1, 2, 2};
+    std::vector<double> nonZeros{1.5, 2.5, 3.5};
+
+    Graph fromCsr = Graph::fromCSR(rowIdx, columnIdx, nonZeros, /* directed = */ false,
+                                   /* isWeighted = */ true);
+
+    // Reference graph built the same way GraphFromCoo does, via addEdge().
+    Graph reference(3, /* weighted = */ true, /* directed = */ false);
+    reference.addEdge(0, 1, 1.5);
+    reference.addEdge(0, 2, 2.5);
+    reference.addEdge(1, 2, 3.5);
+
+    EXPECT_FALSE(fromCsr.isDirected());
+    EXPECT_TRUE(fromCsr.isWeighted());
+    EXPECT_EQ(fromCsr.numberOfNodes(), reference.numberOfNodes());
+    EXPECT_EQ(fromCsr.numberOfEdges(), reference.numberOfEdges());
+    EXPECT_DOUBLE_EQ(fromCsr.totalEdgeWeight(), 1.5 + 2.5 + 3.5);
+    EXPECT_DOUBLE_EQ(fromCsr.totalEdgeWeight(), reference.totalEdgeWeight());
+
+    // Edges and their weights must be reachable from both endpoints.
+    for (const auto &[u, v, w] : {std::tuple{0u, 1u, 1.5}, {0u, 2u, 2.5}, {1u, 2u, 3.5}}) {
+        EXPECT_TRUE(fromCsr.hasEdge(u, v));
+        EXPECT_TRUE(fromCsr.hasEdge(v, u));
+        EXPECT_DOUBLE_EQ(fromCsr.weight(u, v), w);
+        EXPECT_DOUBLE_EQ(fromCsr.weight(v, u), w);
+    }
+
+    // Weighted degrees must agree with the reference for every node.
+    fromCsr.forNodes([&](node u) {
+        EXPECT_DOUBLE_EQ(fromCsr.weightedDegree(u), reference.weightedDegree(u));
+        EXPECT_EQ(fromCsr.degree(u), reference.degree(u));
+    });
+}
+
+TEST(GraphGTest, testFromCSRThrowsOnEmptyRowIdx) {
+    // CSR row pointers must hold at least one entry (nRows + 1).
+    std::vector<index> rowIdx{};
+    std::vector<index> columnIdx{};
+    std::vector<double> nonZeros{};
+
+    EXPECT_THROW(Graph::fromCSR(rowIdx, columnIdx, nonZeros), std::invalid_argument);
+}
+
+TEST(GraphGTest, testFromCSRThrowsOnColumnIdxSizeMismatch) {
+    // rowIdx[nRows] == 3, but only two column indices are provided.
+    std::vector<index> rowIdx{0, 2, 3, 3};
+    std::vector<index> columnIdx{1, 2};
+    std::vector<double> nonZeros{};
+
+    EXPECT_THROW(Graph::fromCSR(rowIdx, columnIdx, nonZeros), std::invalid_argument);
+}
+
+TEST(GraphGTest, testFromCSRThrowsOnNonZerosSizeMismatchWhenWeighted) {
+    // For a weighted graph the number of non-zeros must match rowIdx[nRows].
+    std::vector<index> rowIdx{0, 2, 3, 3};
+    std::vector<index> columnIdx{1, 2, 2};
+    std::vector<double> nonZeros{1.5, 2.5}; // one weight too few
+
+    EXPECT_THROW(Graph::fromCSR(rowIdx, columnIdx, nonZeros, /* directed = */ true,
+                                /* isWeighted = */ true),
+                 std::invalid_argument);
 }
 
 } /* namespace NetworKit */

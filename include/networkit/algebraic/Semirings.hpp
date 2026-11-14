@@ -27,17 +27,13 @@ public:
     ArithmeticSemiring() = default;
     ~ArithmeticSemiring() = default;
 
-    inline static double add(double a, double b) {
-        return a + b;
-    }
+    inline static double add(double a, double b) { return a + b; }
 
-    inline static double mult(double a, double b) {
-        return a * b;
-    }
+    inline static double mult(double a, double b) { return a * b; }
 
-    inline static double zero() {return 0;};
+    inline static double zero() { return 0; };
 
-    inline static double one() {return 1;};
+    inline static double one() { return 1; };
 };
 
 /**
@@ -53,17 +49,13 @@ public:
     MinPlusSemiring() = default;
     ~MinPlusSemiring() = default;
 
-    inline static double add(double a, double b) {
-        return std::min(a,b);
-    }
+    inline static double add(double a, double b) { return std::min(a, b); }
 
-    inline static double mult(double a, double b) {
-        return a+b;
-    }
+    inline static double mult(double a, double b) { return a + b; }
 
-    inline static double zero() {return std::numeric_limits<double>::infinity();};
+    inline static double zero() { return std::numeric_limits<double>::infinity(); };
 
-    inline static double one() {return 0;};
+    inline static double one() { return 0; };
 };
 
 /**
@@ -79,17 +71,13 @@ public:
     MaxPlusSemiring() = default;
     ~MaxPlusSemiring() = default;
 
-    inline static double add(double a, double b) {
-        return std::max(a,b);
-    }
+    inline static double add(double a, double b) { return std::max(a, b); }
 
-    inline static double mult(double a, double b) {
-        return a+b;
-    }
+    inline static double mult(double a, double b) { return a + b; }
 
-    inline static double zero() {return -std::numeric_limits<double>::infinity();};
+    inline static double zero() { return -std::numeric_limits<double>::infinity(); };
 
-    inline static double one() {return 0;};
+    inline static double one() { return 0; };
 };
 
 /**
@@ -105,17 +93,13 @@ public:
     MinMaxSemiring() = default;
     ~MinMaxSemiring() = default;
 
-    inline static double add(double a, double b) {
-        return std::min(a,b);
-    }
+    inline static double add(double a, double b) { return std::min(a, b); }
 
-    inline static double mult(double a, double b) {
-        return std::max(a,b);
-    }
+    inline static double mult(double a, double b) { return std::max(a, b); }
 
-    inline static double zero() {return std::numeric_limits<double>::infinity();};
+    inline static double zero() { return std::numeric_limits<double>::infinity(); };
 
-    inline static double one() {return -std::numeric_limits<double>::infinity();};
+    inline static double one() { return -std::numeric_limits<double>::infinity(); };
 };
 
 /**
@@ -131,17 +115,13 @@ public:
     MaxMinSemiring() = default;
     ~MaxMinSemiring() = default;
 
-    inline static double add(double a, double b) {
-        return std::max(a,b);
-    }
+    inline static double add(double a, double b) { return std::max(a, b); }
 
-    inline static double mult(double a, double b) {
-        return std::min(a,b);
-    }
+    inline static double mult(double a, double b) { return std::min(a, b); }
 
-    inline static double zero() {return -std::numeric_limits<double>::infinity();};
+    inline static double zero() { return -std::numeric_limits<double>::infinity(); };
 
-    inline static double one() {return 0;};
+    inline static double one() { return 0; };
 };
 
 /**
@@ -157,17 +137,13 @@ public:
     IntLogicalSemiring() = default;
     ~IntLogicalSemiring() = default;
 
-    inline static double add(double a, double b) {
-        return (int) a || (int) b;
-    }
+    inline static double add(double a, double b) { return (int)a || (int)b; }
 
-    inline static double mult(double a, double b) {
-        return (int) a && (int) b;
-    }
+    inline static double mult(double a, double b) { return (int)a && (int)b; }
 
-    inline static double zero() {return 0;};
+    inline static double zero() { return 0; };
 
-    inline static double one() {return 1;};
+    inline static double one() { return 1; };
 };
 
 /**
@@ -183,19 +159,13 @@ public:
     GaloisFieldSemiring() = default;
     ~GaloisFieldSemiring() = default;
 
-    inline static double add(double a, double b) {
-        return (int) a ^ (int) b;
-    }
+    inline static double add(double a, double b) { return (int)a ^ (int)b; }
 
-    inline static double mult(double a, double b) {
-        return (int) a & (int) b;
-    }
+    inline static double mult(double a, double b) { return (int)a & (int)b; }
 
-    inline static double zero() {return 0;};
+    inline static double zero() { return 0; };
 
-    inline static double one() {return 1;};
+    inline static double one() { return 1; };
 };
-
-
 
 #endif // NETWORKIT_ALGEBRAIC_SEMIRINGS_HPP_

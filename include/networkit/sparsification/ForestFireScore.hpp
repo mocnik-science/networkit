@@ -19,18 +19,14 @@ namespace NetworKit {
 class ForestFireScore final : public EdgeScore<double> {
 
 public:
-
-    ForestFireScore(const Graph& graph, double pf, double targetBurntRatio);
-    double score(edgeid eid) override;
-    double score(node u, node v) override;
+    ForestFireScore(const Graph &graph, double pf, double targetBurntRatio);
     void run() override;
 
 private:
     double pf;
     double targetBurntRatio;
-
 };
 
-}
+} // namespace NetworKit
 /* namespace NetworKit */
 #endif // NETWORKIT_SPARSIFICATION_FOREST_FIRE_SCORE_HPP_

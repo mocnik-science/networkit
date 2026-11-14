@@ -4,7 +4,6 @@
  * Author: cls
  */
 
-
 #ifndef NETWORKIT_SCD_GCE_HPP_
 #define NETWORKIT_SCD_GCE_HPP_
 
@@ -20,24 +19,23 @@ namespace NetworKit {
  *
  * Greedily adds nodes from the shell to improve community quality.
  */
-class GCE: public SelectiveCommunityDetector {
+class GCE : public SelectiveCommunityDetector {
 
 public:
-
-    GCE(const Graph& G, std::string objective);
-
-    std::map<node, std::set<node>> run(const std::set<node>& seeds) override;
+    GCE(const Graph &g, std::string objective);
 
     /**
-     * @param[in]  s  seed node
+     * @param[in]  seeds  seed nodes
      *
-     * @param[out]    community as a set of nodes
+     * @param[out]        community as a set of nodes
      */
-    std::set<node> expandSeed(node s);
+    std::set<node> expandOneCommunity(const std::set<node> &seeds) override;
+
+    // inherit method from parent class.
+    using SelectiveCommunityDetector::expandOneCommunity;
 
 private:
-    std::string objective;    // name of objective function
-
+    std::string objective; // name of objective function
 };
 
 } /* namespace NetworKit */

@@ -5,8 +5,6 @@
  *      Author: Michael Hamann
  */
 
-// networkit-format
-
 #ifndef NETWORKIT_SPARSIFICATION_CHANCE_CORRECTED_TRIANGLE_SCORE_HPP_
 #define NETWORKIT_SPARSIFICATION_CHANCE_CORRECTED_TRIANGLE_SCORE_HPP_
 
@@ -18,8 +16,6 @@ class ChanceCorrectedTriangleScore final : public EdgeScore<double> {
 
 public:
     ChanceCorrectedTriangleScore(const Graph &graph, const std::vector<count> &triangles);
-    double score(edgeid eid) override;
-    double score(node u, node v) override;
     void run() override;
 
 private:

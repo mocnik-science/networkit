@@ -4,7 +4,6 @@
  *  Created on: 01.06.2019
  *    Author: Manuel Penschuck <networkit@manuel.jetzt>
  */
-// networkit-format
 #include <omp.h>
 
 #include <algorithm>
@@ -139,10 +138,6 @@ static std::vector<index> computePermutation(std::vector<NodeDegree<DegreeT>> &n
 
 DegreePreservingShuffle::DegreePreservingShuffle(const Graph &G) : G(&G) {}
 DegreePreservingShuffle::~DegreePreservingShuffle() = default;
-
-std::string DegreePreservingShuffle::toString() const {
-    return "DegreePreservingShuffle";
-}
 
 void DegreePreservingShuffle::run() {
     const auto n = G->numberOfNodes();

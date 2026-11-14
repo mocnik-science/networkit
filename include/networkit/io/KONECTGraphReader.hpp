@@ -4,7 +4,6 @@
  *  Created on: 11.05.2018
  *      Author: Roman Bange
  */
-// networkit-format
 
 #ifndef NETWORKIT_IO_KONECT_GRAPH_READER_HPP_
 #define NETWORKIT_IO_KONECT_GRAPH_READER_HPP_
@@ -35,7 +34,7 @@ public:
      *
      * @param[in]  path  input file path
      */
-    Graph read(const std::string &path) override;
+    Graph read(std::string_view path) override;
 
 private:
     bool remapNodes;

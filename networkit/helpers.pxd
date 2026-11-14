@@ -1,16 +1,13 @@
+from cython.operator cimport dereference
+
 from libcpp.string cimport string
-from libc.stdint cimport uint64_t
 from libcpp cimport bool as bool_t
 from libcpp.vector cimport vector
 from libcpp.utility cimport pair
 
-ctypedef uint64_t count
-ctypedef uint64_t index
-ctypedef index node
-
 from .graph cimport _Graph
 from .structures cimport _Partition, _Cover
-from .matching cimport _Matching
+from .structures cimport count, index, node, edgeweight
 
 cdef extern from "cython_helper.h":
 	void throw_runtime_error(string message)
@@ -20,7 +17,6 @@ cdef extern from "<algorithm>" namespace "std":
 	_Graph move( _Graph t ) nogil # specialized declaration as general declaration disables template argument deduction and doesn't work
 	_Partition move( _Partition t) nogil
 	_Cover move(_Cover t) nogil
-	_Matching move(_Matching) nogil
 	vector[double] move(vector[double])
 	vector[bool_t] move(vector[bool_t])
 	vector[count] move(vector[count])
@@ -28,3 +24,13 @@ cdef extern from "<algorithm>" namespace "std":
 	vector[pair[pair[node, node], double]] move(vector[pair[pair[node, node], double]]) nogil
 	vector[pair[node, node]] move(vector[pair[node, node]]) nogil
 
+ctypedef fused element_t:
+	edgeweight
+	node
+	double
+
+cdef asarray_1d(vector[element_t]* vec)
+cdef asarray_2d(vector[vector[element_t]]* nested)
+
+cdef maybe_asarray_1d(vector[element_t]* vec, asarray)
+cdef maybe_asarray_2d(vector[vector[element_t]]* nested, asarray)

@@ -14,7 +14,27 @@ cdef extern from "<networkit/correlation/Assortativity.hpp>":
 		double getCoefficient() except +
 
 cdef class Assortativity(Algorithm):
-	""" """
+	""" 
+	Assortativity(G, data)
+	
+	Assortativity computes a coefficient that expresses the correlation of a
+	node attribute among connected pairs of nodes.
+	
+	For a partition of the node set (a nominal attribute), the coefficient is
+	computed from the mixing matrix e, where e_ij is the fraction of edge counts
+	from nodes in subset i to nodes in subset j. In undirected graphs, each edge
+	{u, v} with u != v is counted once in each direction and each self-loop is
+	counted once, and the mixing matrix is normalized by the total of these
+	counts (2m minus the number of self-loops). In directed graphs, each edge is
+	counted once and the matrix is normalized by m.
+	
+	Parameters
+	----------
+	G : networkit.graph
+		The input graph.
+	data : list(float) or networkit.Partition
+		Numerical node value array, or a partition of the node set.
+	"""
 	cdef Graph G
 	cdef vector[double] attribute
 	cdef Partition partition
@@ -29,5 +49,15 @@ cdef class Assortativity(Algorithm):
 		self.G = G
 
 	def getCoefficient(self):
+		"""
+		getCoefficient()
+
+		Return the assortativity coefficient.
+
+		Returns
+		-------
+		float
+			The assortativity coefficient.
+		"""
 		return (<_Assortativity*>(self._this)).getCoefficient()
 

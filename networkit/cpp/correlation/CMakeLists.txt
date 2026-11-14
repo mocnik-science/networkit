@@ -3,5 +3,6 @@ networkit_add_module(correlation
     )
 
 networkit_module_link_modules(correlation
-    base graph structures)
+    graph structures)
 
+add_subdirectory(test)

@@ -22,8 +22,6 @@ struct Triplet {
 /** Floating point epsilon to use in comparisons. */
 constexpr double FLOAT_EPSILON = 1e-9;
 
-}
-
-
+} // namespace NetworKit
 
 #endif // NETWORKIT_ALGEBRAIC_ALGEBRAIC_GLOBALS_HPP_

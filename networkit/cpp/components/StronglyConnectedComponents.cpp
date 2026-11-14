@@ -8,8 +8,6 @@
  *               Eugenio Angriman <angrimae@hu-berlin.de>
  */
 
-// networkit-format
-
 #include <stack>
 
 #include <networkit/auxiliary/Log.hpp>
@@ -54,7 +52,7 @@ void StronglyConnectedComponents::run() {
         ++curDepth;
         stack.emplace_back(v);
         onStack[v] = 1;
-        dfsStack.push({v, G->neighborRange(v).begin()});
+        dfsStack.emplace(v, G->neighborRange(v).begin());
     };
 
     auto strongConnect = [&](const node u) -> void {
@@ -135,7 +133,7 @@ Graph StronglyConnectedComponents::extractLargestStronglyConnectedComponent(cons
 
     const auto compSizes = component.subsetSizeMap();
     if (compSizes.size() == 1) {
-        if (compactGraph)
+        if (compactGraph && G.upperNodeIdBound() != G.numberOfNodes())
             return GraphTools::getCompactedGraph(G, GraphTools::getContinuousNodeIds(G));
         return G;
     }
@@ -148,12 +146,7 @@ Graph StronglyConnectedComponents::extractLargestStronglyConnectedComponent(cons
                                      ->first;
 
     const auto nodesInLSCC = component.getMembers(largestSCCIndex);
-    const auto largestSCC =
-        GraphTools::subgraphFromNodes(G, {nodesInLSCC.begin(), nodesInLSCC.end()});
-    if (compactGraph)
-        return GraphTools::getCompactedGraph(largestSCC,
-                                             GraphTools::getContinuousNodeIds(largestSCC));
-    return largestSCC;
+    return GraphTools::subgraphFromNodes(G, nodesInLSCC.begin(), nodesInLSCC.end(), compactGraph);
 }
 
 } // namespace NetworKit

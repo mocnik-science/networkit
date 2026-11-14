@@ -3,18 +3,19 @@
 
 #include <limits>
 
-#include <networkit/graph/Graph.hpp>
-#include <networkit/structures/UnionFind.hpp>
 #include <networkit/auxiliary/Log.hpp>
 #include <networkit/auxiliary/Random.hpp>
 #include <networkit/base/Algorithm.hpp>
+#include <networkit/graph/Graph.hpp>
+#include <networkit/structures/UnionFind.hpp>
 
 #include <tlx/define/deprecated.hpp>
 
 namespace NetworKit {
 
 /**
- * Computes a random maximum-weight spanning forest using Kruskal's algorithm by randomizing the order of edges of the same weight.
+ * Computes a random maximum-weight spanning forest using Kruskal's algorithm by randomizing the
+ * order of edges of the same weight.
  */
 class RandomMaximumSpanningForest : public Algorithm {
 public:
@@ -26,15 +27,22 @@ public:
     RandomMaximumSpanningForest(const Graph &G);
 
     /**
-     * Initialize the random maximum-weight spanning forest algorithm using an attribute as edge weight.
+     * Initialize the random maximum-weight spanning forest algorithm using a vector of values, one
+     * for each edge. These values are used as edge weights. Each value corresponds to the edge with
+     * the given id.
      *
-     * This copies the attribute values, the supplied attribute vector is not stored.
+     * Note: Since the mapping relies on edge ids, this variant only works, if the graph has edge
+     * ids. Call Graph::indexEdges() beforehand if necessary. The values are copied, the supplied
+     * vector is not stored in the RandomMaximumSpanningForest object. If the graph is changed, i.e.
+     * edges are removed, indexEdges should be called again to ensure that edge ids are contiguous.
+     * Otherwise edgeValues entries for the missing edges can be arbitrary.
      *
      * @param G The input graph.
-     * @param attribute The attribute to use, can be either of type edgeweight (double) or count (uint64), internally all values are handled as double.
+     * @param edgeValues The edge values to use, can be either of type edgeweight (double) or count
+     * (uint64), internally all values are handled as double.
      */
     template <typename A>
-    RandomMaximumSpanningForest(const Graph &G, const std::vector<A> &attribute);
+    RandomMaximumSpanningForest(const Graph &G, const std::vector<A> &edgeValues);
 
     /**
      * Execute the algorithm. The algorithm is not parallel.
@@ -42,14 +50,31 @@ public:
     void run() override;
 
     /**
-     * Get a boolean attribute that indicates for each edge if it is part of the calculated maximum-weight spanning forest.
+     * DEPRECATED: this function will no longer be supported in later releases. Use getIndicator()
+     * instead.
      *
-     * This attribute is only calculated and can thus only be request if the supplied graph has edge ids.
+     * Get a boolean attribute that indicates for each edge if it is part of the calculated
+     * maximum-weight spanning forest.
+     *
+     * This attribute is only calculated and can thus only be request if the supplied graph has edge
+     * ids.
      *
      * @param move If the attribute shall be moved out of the algorithm instance.
      * @return The vector with the boolean attribute for each edge.
      */
-    std::vector<bool> getAttribute(bool move = false);
+    std::vector<bool> TLX_DEPRECATED(getAttribute(bool move = false));
+
+    /**
+     * Get a boolean indicator vector that indicates for each edge if it is part of any
+     * maximum-weight spanning forest.
+     *
+     * This indicator vector is only calculated and can thus only be requested if the supplied graph
+     * has edge ids.
+     *
+     * @param move If the indicator vector shall be moved out of the algorithm instance.
+     * @return The vector with the boolean indicator for each edge.
+     */
+    std::vector<bool> getIndicator(bool move = false);
 
     /**
      * Checks if the edge (@a u, @a v) is part of the calculated maximum-weight spanning forest.
@@ -61,7 +86,8 @@ public:
     bool inMSF(node u, node v) const;
 
     /**
-     * Checks if the edge with the id @a eid is part of the calculated maximum-weight spanning forest.
+     * Checks if the edge with the id @a eid is part of the calculated maximum-weight spanning
+     * forest.
      *
      * @param eid The id of the edge to check.
      * @return If the edge is part of the calculated maximum-weight spanning forest.
@@ -76,16 +102,6 @@ public:
      */
     Graph getMSF(bool move = false);
 
-    /**
-     * @return false - this algorithm is not parallelized
-     */
-    bool TLX_DEPRECATED(isParallel() const override);
-
-    /**
-     * @return The name of this algorithm.
-     */
-    std::string TLX_DEPRECATED(toString() const override);
-
 private:
     struct weightedEdge {
         double attribute;
@@ -95,14 +111,14 @@ private:
         index rand;
 
         bool operator>(const weightedEdge &other) const {
-            return
-            (attribute > other.attribute)
-            ||
-            (attribute == other.attribute &&
-                (rand > other.rand ||
-                (rand == other.rand && (u > other.u || (u == other.u && v > other.v)))));
+            return (attribute > other.attribute)
+                   || (attribute == other.attribute
+                       && (rand > other.rand
+                           || (rand == other.rand
+                               && (u > other.u || (u == other.u && v > other.v)))));
         };
-        weightedEdge(node u, node v, double attribute, edgeid eid = 0) : attribute(attribute), u(u), v(v), eid(eid), rand(Aux::Random::integer()) {};
+        weightedEdge(node u, node v, double attribute, edgeid eid = 0)
+            : attribute(attribute), u(u), v(v), eid(eid), rand(Aux::Random::integer()) {};
     };
 
     const Graph &G;
@@ -117,22 +133,23 @@ private:
 };
 
 template <typename A>
-RandomMaximumSpanningForest::RandomMaximumSpanningForest(const Graph &G, const std::vector< A > &attribute) : G(G), hasWeightedEdges(false), hasMSF(false), hasAttribute(false) {
+RandomMaximumSpanningForest::RandomMaximumSpanningForest(const Graph &G,
+                                                         const std::vector<A> &edgeValues)
+    : G(G), hasWeightedEdges(false), hasMSF(false), hasAttribute(false) {
     if (!G.hasEdgeIds()) {
-        throw std::runtime_error("Error: Edges of G must be indexed for using edge attributes");
+        throw std::runtime_error("Error: Edges of G must be indexed for using edge values.");
     }
 
     weightedEdges.reserve(G.numberOfEdges());
 
     G.forEdges([&](node u, node v, edgeid eid) {
-        weightedEdges.emplace_back(u, v, attribute[eid], eid);
+        weightedEdges.emplace_back(u, v, edgeValues[eid], eid);
     });
 
     INFO(weightedEdges.size(), " weighted edges saved");
 
     hasWeightedEdges = true;
 }
-
 
 } // namespace NetworKit
 

@@ -9,10 +9,12 @@
 #ifndef NETWORKIT_CENTRALITY_DYN_KATZ_CENTRALITY_HPP_
 #define NETWORKIT_CENTRALITY_DYN_KATZ_CENTRALITY_HPP_
 
+#include <span>
+
 #include <networkit/auxiliary/PrioQueue.hpp>
 #include <networkit/base/DynAlgorithm.hpp>
-#include <networkit/dynamics/GraphEvent.hpp>
 #include <networkit/centrality/Centrality.hpp>
+#include <networkit/dynamics/GraphEvent.hpp>
 
 namespace NetworKit {
 
@@ -43,9 +45,10 @@ public:
      * @param[in] G The graph.
      * @param[in] k The number k for which we want to find the top-k nodes with
      * highest Katz centrality
+     * @param[in] groupOnly Set whether the update will only update top-k nodes.
+     * @param[in] tolerance The tolerance for convergence.
      */
-    DynKatzCentrality(const Graph &G, count k, bool groupOnly = false,
-                      double tolerance = 1e-9);
+    DynKatzCentrality(const Graph &G, count k, bool groupOnly = false, double tolerance = 1e-9);
 
     void run() override;
 
@@ -55,7 +58,7 @@ public:
      *
      * @param event The edge insertions or deletion.
      */
-    void updateBatch(const std::vector<GraphEvent> &events) override;
+    void updateBatch(std::span<const GraphEvent> events) override;
 
     void update(GraphEvent singleEvent) override {
         std::vector<GraphEvent> events{singleEvent};

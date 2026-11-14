@@ -1,18 +1,23 @@
+#include <queue>
+#include <stack>
+#include <vector>
+
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <networkit/auxiliary/VectorComparator.hpp>
 #include <networkit/generators/ErdosRenyiGenerator.hpp>
 #include <networkit/graph/BFS.hpp>
 #include <networkit/graph/DFS.hpp>
 #include <networkit/graph/Dijkstra.hpp>
 #include <networkit/graph/GraphTools.hpp>
 
-// networkit-format
-
 namespace NetworKit {
+
+using ::testing::Pair;
 
 class TraversalGTest : public testing::TestWithParam<std::pair<bool, bool>> {
 protected:
-    Graph generateRandomWeights(const Graph &G) const;
     bool weighted() const noexcept;
     bool directed() const noexcept;
 };
@@ -20,12 +25,6 @@ protected:
 INSTANTIATE_TEST_SUITE_P(InstantiationName, TraversalGTest,
                          testing::Values(std::make_pair(false, false), std::make_pair(true, false),
                                          std::make_pair(false, true), std::make_pair(true, true)));
-
-Graph TraversalGTest::generateRandomWeights(const Graph &G) const {
-    Graph Gw(G, true, G.isDirected());
-    Gw.forEdges([&](node u, node v) { Gw.setWeight(u, v, Aux::Random::probability()); });
-    return Gw;
-}
 
 bool TraversalGTest::weighted() const noexcept {
     return GetParam().first;
@@ -89,7 +88,7 @@ TEST_P(TraversalGTest, testBFSfrom) {
             doBFS(G, sources);
             curNode = 0;
             Traversal::BFSEdgesFrom(G, randNodes[i - 1], [&](node u, node v, edgeweight, edgeid) {
-                EXPECT_EQ(edgeSequence[curNode++], std::make_pair(u, v));
+                EXPECT_THAT(edgeSequence[curNode++], Pair(u, v));
             });
         }
     }
@@ -127,15 +126,25 @@ TEST_P(TraversalGTest, testDFSfrom) {
 
     for (int seed : {1, 2, 3}) {
         Aux::Random::setSeed(seed, false);
-        const auto G = ErdosRenyiGenerator(n, p, directed()).generate();
+        auto G = ErdosRenyiGenerator(n, p, directed()).generate();
+        if (weighted()) {
+            GraphTools::randomizeWeights(G);
+        }
         G.forNodes([&](node source) {
             doDFS(G, source);
             count curNode = 0;
-            Traversal::DFSfrom(G, source, [&](node u) { EXPECT_EQ(sequence[curNode++], u); });
-            curNode = 0;
-            Traversal::DFSEdgesFrom(G, source, [&](node u, node v, edgeweight, edgeid) {
-                EXPECT_EQ(edgeSequence[curNode++], std::make_pair(u, v));
+            Traversal::DFSfrom(G, source, [&](node u) {
+                EXPECT_LT(curNode, sequence.size());
+                EXPECT_EQ(sequence[curNode++], u);
             });
+            EXPECT_EQ(curNode, sequence.size());
+            curNode = 0;
+            Traversal::DFSEdgesFrom(G, source, [&](node u, node v, edgeweight w, edgeid) {
+                EXPECT_LT(curNode, edgeSequence.size());
+                EXPECT_THAT(edgeSequence[curNode++], Pair(u, v));
+                EXPECT_EQ(w, G.weight(u, v));
+            });
+            EXPECT_EQ(curNode, edgeSequence.size());
         });
     }
 }
@@ -151,20 +160,9 @@ TEST_P(TraversalGTest, testDijkstraFrom) {
     }
 
     auto dijkstra = [&](const Graph &G, const std::vector<node> &sources) {
-        struct CompareDistance {
-            CompareDistance(const std::vector<edgeweight> &distance) : distance(distance) {}
-
-            bool operator()(const node x, const node y) const noexcept {
-                return distance[x] < distance[y];
-            }
-
-        private:
-            const std::vector<edgeweight> &distance;
-        };
-
         std::vector<edgeweight> distance(G.upperNodeIdBound(),
                                          std::numeric_limits<edgeweight>::max());
-        tlx::d_ary_addressable_int_heap<node, 2, CompareDistance> heap{CompareDistance(distance)};
+        tlx::d_ary_addressable_int_heap<node, 2, Aux::LessInVector<edgeweight>> heap{distance};
         for (const auto u : sources) {
             distance[u] = 0;
             heap.push(u);
@@ -187,7 +185,7 @@ TEST_P(TraversalGTest, testDijkstraFrom) {
         Aux::Random::setSeed(seed, false);
         auto G = ErdosRenyiGenerator(n, p, directed()).generate();
         if (weighted()) {
-            G = generateRandomWeights(G);
+            GraphTools::randomizeWeights(G);
         }
 
         G.forNodes([&](const node u) {

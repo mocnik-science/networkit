@@ -159,17 +159,7 @@ We want to ensure that code across NetworKit is easy to understand for existing 
 
 In order to maintain the same standard of code across the entire NetworKit code base, some coding standards are enforced. However, there is some automation to help developers with this. Below is a list of these standards and instructions on how to use the available automation tools that ensure your code adheres to them.
 
--  ``CppClangFormat`` applies clang-format to all files that contain the
-   string ``networkit-format``.
-    After adding a new file to the code base, subscribe the file to ``networkit-format`` by adding the string "networkit-format" to the file after the include guards as is shown below.
-    ::
-
-        /*
-        * GlobalCurveballImpl.hpp
-        ...
-        */
-        // networkit-format
-
+-  ``CppClangFormat`` applies clang-format to all C++ files.
 -  ``CppIndentation`` checks that all C++ code is indented with spaces
    and not tabs.
 -  ``CppIncludeGuards`` ensures that the header files contain an include guard and
@@ -179,10 +169,12 @@ The executable file ``check_code.sh`` in NetworKit's root directory carries out 
 
 On top of the aforementioned mentioned points concerning style, the NetworKit C++ code base also complies to a selection of ``clang-tidy`` static-code analysis checks.
 New code must pass these tests before being merged into the development branch. The list of checks can be found in the ``.clang-tidy`` file.
-In order to run the ``clang-tidy`` checks while building NetworKit, set the ``CMake`` flag ``-NETWORKIT_CLANG_TIDY`` to ``ON`` in addition to the other compile flags, e.g.
+In order to run the ``clang-tidy`` checks while building NetworKit, set the ``CMake`` flag ``-DNETWORKIT_CLANG_TIDY`` to ``ON`` in addition to the other compile flags, e.g.
 ::
 
     cmake -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=Debug -DNETWORKIT_WARNINGS_AS_ERRORS=ON -DNETWORKIT_CLANG_TIDY=ON ..
+
+To use a specific ``clang-tidy`` executable, set ``-DNETWORKIT_CLANG_TIDY_EXECUTABLE``, e.g. ``-DNETWORKIT_CLANG_TIDY_EXECUTABLE=clang-tidy-22``.
 
 In a nutshell, new developers should familiarise themselves with the existing code base and adapt the existing style in the C++ as well as Python code base when contributing to NetworKit. Always ensure your code is easy to understand and properly documented.
 
@@ -258,7 +250,7 @@ likely not be accepted.
 
 Unit tests for the C++ part of NetworKit are based on the ``googletest``
 library. For more information read the `googletest
-primer <https://github.com/google/googletest/blob/master/googletest/docs/Primer.md>`__. The Python
+primer <https://google.github.io/googletest/primer.html>`__. The Python
 test framework currently relies on ``nose`` to collect the tests.
 
 -  Each source folder contains a ``test`` folder with ``googletest``

@@ -22,44 +22,44 @@
 namespace NetworKit {
 
 class StateFrame {
-  public:
+public:
     StateFrame(const count size) { apx.assign(size, 0); };
     count nPairs = 0;
     count epoch = 0;
     std::vector<count> apx;
 
     void reset(count newEpoch) {
-        std::fill(apx.begin(), apx.end(), 0);
+        std::ranges::fill(apx, 0);
         nPairs = 0;
         epoch = newEpoch;
     }
 };
 
 class Status {
-  public:
-      Status(count k);
-      const count k;
-      std::vector<node> top;
-      std::vector<double> approxTop;
-      std::vector<bool> finished;
-      std::vector<double> bet;
-      std::vector<double> errL;
-      std::vector<double> errU;
+public:
+    Status(count k);
+    const count k;
+    std::vector<node> top;
+    std::vector<double> approxTop;
+    std::vector<bool> finished;
+    std::vector<double> bet;
+    std::vector<double> errL;
+    std::vector<double> errU;
 };
 
 class SpSampler {
-  private:
+private:
     const Graph &G;
     const ConnectedComponents &cc;
 
-  public:
+public:
     SpSampler(const Graph &G, const ConnectedComponents &cc);
     void randomPath(StateFrame *curFrame);
     StateFrame *frame;
     std::mt19937_64 rng;
     std::uniform_int_distribution<node> distr;
 
-  private:
+private:
     std::vector<uint8_t> timestamp;
     uint8_t globalTS = 1;
     static constexpr uint8_t stampMask = 0x7F;
@@ -79,7 +79,7 @@ class SpSampler {
  * @ingroup centrality
  */
 class KadabraBetweenness : public Algorithm {
-  public:
+public:
     // See EUROPAR'19 paper for the selection of these parameters.
     unsigned int baseItersPerStep = 1000;
     double itersPerStepExp = 1.33;
@@ -90,8 +90,10 @@ class KadabraBetweenness : public Algorithm {
      * described in Borassi M., and Natale E. (2016): KADABRA is an ADaptive
      * Algorithm for Betweenness via Random Approximation.
      * Parallel implementation by Van der Grinten A., Angriman E., and
-     * Meyerhenke H. (2019): Parallel Adaptive Sampling with almost no
-     * Synchronization. ArXiv pre-print (https://arxiv.org/abs/1903.09422).
+     * Meyerhenke H.: Parallel Adaptive Sampling with almost no
+     * Synchronization, Euro-Par 2019.
+     * https://link.springer.com/chapter/10.1007/978-3-030-29400-7_31
+     * ArXiv pre-print: https://arxiv.org/abs/1903.09422.
      *
      * If k = 0 the algorithm approximates the betweenness centrality of all
      * vertices of the graph so that the scores are within an additive error @a
@@ -108,10 +110,14 @@ class KadabraBetweenness : public Algorithm {
      * betweenness centrality of all nodes.
      * @param delta probability that the values of the betweenness centrality
      * are within the error guarantee.
+     * @param deterministic If true, the algorithm guarantees that the results of two different
+     * executions is the same for a fixed random seed, regardless of the number of threads. Note
+     * that this guarantee leads to increased computational and memory complexity. Default: false.
      * @param k the number of top-k nodes to be computed. Set it to zero to
      * approximate the betweenness centrality of all the nodes.
-     * @param unionSample, startFactor algorithm parameters that are
-     * automatically chosen.
+     * @param unionSample algorithm parameter that is automatically chosen.
+     * @param startFactor algorithm parameter that is automatically chosen.
+     * @throws std::invalid_argument If the input graph is empty.
      */
     KadabraBetweenness(const Graph &G, double err = 0.01, double delta = 0.1,
                        bool deterministic = false, count k = 0, count unionSample = 0,
@@ -172,14 +178,10 @@ class KadabraBetweenness : public Algorithm {
 
     count maxAllocatedFrames() const {
         assureFinished();
-        count maxNFrames = 0;
-        for (auto nFrames : maxFrames) {
-            maxNFrames = std::max(nFrames, maxNFrames);
-        }
-        return maxNFrames;
+        return *std::ranges::max_element(maxFrames);
     }
 
-  protected:
+protected:
     const Graph &G;
     const double delta, err;
     const bool deterministic;
@@ -209,8 +211,7 @@ class KadabraBetweenness : public Algorithm {
 
     void init();
     void computeDeltaGuess();
-    void computeBetErr(Status *status, std::vector<double> &bet,
-                       std::vector<double> &errL,
+    void computeBetErr(Status *status, std::vector<double> &bet, std::vector<double> &errL,
                        std::vector<double> &errU) const;
     bool computeFinished(Status *status) const;
     void getStatus(Status *status, bool parallel = false) const;
@@ -227,8 +228,7 @@ class KadabraBetweenness : public Algorithm {
     }
 };
 
-inline std::vector<std::pair<node, double>>
-KadabraBetweenness::ranking() const {
+inline std::vector<std::pair<node, double>> KadabraBetweenness::ranking() const {
     assureFinished();
     std::vector<std::pair<node, double>> result(topkNodes.size());
 #pragma omp parallel for

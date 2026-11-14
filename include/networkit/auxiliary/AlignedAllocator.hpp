@@ -1,7 +1,8 @@
-// networkit-format
 
 #ifndef NETWORKIT_AUXILIARY_ALIGNED_ALLOCATOR_HPP_
 #define NETWORKIT_AUXILIARY_ALIGNED_ALLOCATOR_HPP_
+
+#include <stdexcept>
 
 /**
  * Allocator for aligned data.
@@ -36,8 +37,6 @@ public:
     struct rebind {
         typedef AlignedAllocator<U, Alignment> other;
     };
-
-    bool operator!=(const AlignedAllocator &other) const { return !(*this == other); }
 
     void construct(T *const p, const T &t) const {
         void *const pv = static_cast<void *>(p);

@@ -1,4 +1,3 @@
-// networkit-format
 
 #include <gtest/gtest.h>
 
@@ -29,10 +28,7 @@ TEST_P(GlobalThresholdFilterGTest, testGlobalThresholdFilter) {
         Aux::Random::setSeed(seed, false);
         auto G = ErdosRenyiGenerator(n, p, isDirected()).generate();
         if (isWeighted()) {
-            G = GraphTools::toWeighted(G);
-            G.forEdges([&G](const node u, const node v) {
-                G.setWeight(u, v, Aux::Random::probability());
-            });
+            GraphTools::randomizeWeights(G);
         }
 
         G.indexEdges();

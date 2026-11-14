@@ -32,7 +32,6 @@ public:
     virtual std::vector<GraphEvent> generate(count nSteps) = 0;
 
 protected:
-
     Graph G; // the graph instance
 };
 

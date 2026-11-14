@@ -18,10 +18,9 @@ namespace NetworKit {
  * Creates a minimum spanning tree for each connected component.
  * @ingroup graph
  */
-class KruskalMSF final: public SpanningForest {
+class KruskalMSF final : public SpanningForest {
 public:
-    KruskalMSF(const Graph& G);
-    ~KruskalMSF() override = default;
+    KruskalMSF(const Graph &G);
 
     /**
      * Computes for each component a minimum weight spanning tree
@@ -30,6 +29,21 @@ public:
      * Time complexity: sort(n) + n * inverse Ackermann(n, m).
      */
     void run() override;
+
+    /**
+     * @return Total edge-weight of the spanning forest.
+     * Number of edges in forest if input graph is unweighted.
+     */
+    edgeweight getTotalWeight() const {
+        assureFinished();
+        if (G->isWeighted())
+            return totalWeight;
+        else
+            return static_cast<edgeweight>(forest.numberOfEdges());
+    }
+
+private:
+    edgeweight totalWeight = 0.0;
 };
 
 } /* namespace NetworKit */

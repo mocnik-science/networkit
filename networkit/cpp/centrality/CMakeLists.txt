@@ -7,6 +7,7 @@ networkit_add_module(centrality
     Betweenness.cpp
     Centrality.cpp
     Closeness.cpp
+    ComplexPaths.cpp
     CoreDecomposition.cpp
     DegreeCentrality.cpp
     DynApproxBetweenness.cpp
@@ -16,11 +17,15 @@ networkit_add_module(centrality
     DynTopHarmonicCloseness.cpp
     EigenvectorCentrality.cpp
     EstimateBetweenness.cpp
+    ForestCentrality.cpp
     GedWalk.cpp
     GroupCloseness.cpp
+    GroupClosenessLocalSearch.cpp
     GroupClosenessGrowShrink.cpp
     GroupClosenessGrowShrinkImpl.cpp
+    GroupClosenessLocalSwaps.cpp
     GroupDegree.cpp
+    GroupHarmonicCloseness.cpp
     HarmonicCloseness.cpp
     KadabraBetweenness.cpp
     KatzCentrality.cpp
@@ -28,6 +33,7 @@ networkit_add_module(centrality
     LaplacianCentrality.cpp
     LocalClusteringCoefficient.cpp
     LocalPartitionCoverage.cpp
+    LocalSquareClusteringCoefficient.cpp
     PageRank.cpp
     PermanenceCentrality.cpp
     Sfigality.cpp
@@ -39,12 +45,12 @@ networkit_add_module(centrality
 networkit_module_link_modules(centrality
         algebraic
         auxiliary
-        base
         components
         distance
         dyn_distance
         dynamics
         graph
+        linkprediction
         reachability
         structures
     )

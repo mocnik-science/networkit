@@ -8,22 +8,23 @@
 #include <cassert>
 #include <stack>
 
-#include <networkit/centrality/KPathCentrality.hpp>
 #include <networkit/auxiliary/Log.hpp>
 #include <networkit/auxiliary/Random.hpp>
+#include <networkit/centrality/KPathCentrality.hpp>
 #include <networkit/graph/GraphTools.hpp>
 
 namespace NetworKit {
 
-KPathCentrality::KPathCentrality(const Graph& G, double alpha, count k) : Centrality(G, false, false) {
+KPathCentrality::KPathCentrality(const Graph &G, double alpha, count k)
+    : Centrality(G, false, false) {
     if (alpha >= -0.5 && alpha <= 0.5) {
         this->alpha = alpha;
     } else {
         throw std::runtime_error("alpha must lie in interval [-0.5, 0.5]");
     }
     if (k == 0) {
-        this->k = log(static_cast<double>(G.numberOfNodes() + G.numberOfEdges()));
-    } else if (k >0) {
+        this->k = std::log(static_cast<double>(G.numberOfNodes() + G.numberOfEdges()));
+    } else if (k > 0) {
         this->k = k;
     } else {
         throw std::runtime_error("k must be an integer");
@@ -42,7 +43,7 @@ void KPathCentrality::run() {
     counter.assign(z, 0);
     explored.assign(z, false);
 
-    count t = 2.0 * k * k * pow(n, 1 - 2 * alpha) * log(n);
+    count t = 2.0 * k * k * std::pow(n, 1 - 2 * alpha) * std::log(n);
     std::stack<node> stack;
     node v = none;
 
@@ -62,8 +63,8 @@ void KPathCentrality::run() {
             G.forNeighborsOf(s, [&](node u, edgeweight ew) {
                 if (!explored[u]) {
                     neighbours.push_back(u);
-                    weights.push_back(1/ew);
-                    sum += 1/ew;
+                    weights.push_back(1 / ew);
+                    sum += 1 / ew;
                 }
             });
             if (neighbours.empty()) {
@@ -79,7 +80,7 @@ void KPathCentrality::run() {
                     random -= weights[x];
                 }
             } else {
-                v = neighbours[Aux::Random::integer(0,neighbours.size() - 1)];
+                v = neighbours[Aux::Random::integer(0, neighbours.size() - 1)];
             }
             assert(v != none);
             explored[v] = true;
@@ -95,12 +96,9 @@ void KPathCentrality::run() {
         }
     }
 
-    G.forNodes([&](node v) {
-        scoreData[v] = k * n * (static_cast<double>(counter[v]) / t);
-    });
+    G.forNodes([&](node v) { scoreData[v] = k * n * (static_cast<double>(counter[v]) / t); });
 
     hasRun = true;
 }
-
 
 } /* namespace NetworKit */

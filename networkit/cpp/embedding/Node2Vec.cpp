@@ -14,13 +14,10 @@
  *
  */
 
-// networkit-format
-
 #include <vector>
 
 #include <networkit/auxiliary/Log.hpp>
 #include <networkit/auxiliary/SignalHandling.hpp>
-#include <networkit/auxiliary/Timer.hpp>
 #include <networkit/base/Algorithm.hpp>
 #include <networkit/embedding/Node2Vec.hpp>
 #include <networkit/graph/Graph.hpp>
@@ -36,6 +33,15 @@ Node2Vec::Node2Vec(const Graph &G, double P, double Q, count L, count N, count D
     if (G.numberOfNodes() != G.upperNodeIdBound()) {
         throw std::runtime_error("The node ids of the graph must be continuous.");
     }
+    bool hasIsolatedNodes = false;
+    for (node u : G.nodeRange()) {
+        if (G.isIsolated(u)) {
+            hasIsolatedNodes = true;
+            break;
+        }
+    }
+    if (hasIsolatedNodes)
+        throw std::runtime_error("Isolated nodes are not allowed.");
 }
 
 void Node2Vec::run() {
@@ -62,7 +68,7 @@ void Node2Vec::run() {
     hasRun = true;
 }
 
-const std::vector<std::vector<float>> &Node2Vec::getFeatures() {
+const std::vector<std::vector<float>> &Node2Vec::getFeatures() const {
     assureFinished();
     return features;
 }

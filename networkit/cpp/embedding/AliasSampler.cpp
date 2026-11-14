@@ -12,9 +12,6 @@
  *
  */
 
-// networkit-format
-
-#include <random>
 #include <vector>
 
 #include <networkit/Globals.hpp>

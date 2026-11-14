@@ -8,6 +8,7 @@
 #ifndef NETWORKIT_EDGESCORES_EDGE_SCORE_AS_WEIGHT_HPP_
 #define NETWORKIT_EDGESCORES_EDGE_SCORE_AS_WEIGHT_HPP_
 
+#include <tlx/define/deprecated.hpp>
 #include <networkit/graph/Graph.hpp>
 
 namespace NetworKit {
@@ -15,16 +16,18 @@ namespace NetworKit {
 class EdgeScoreAsWeight final {
 
 public:
-    EdgeScoreAsWeight(const Graph& G, const std::vector<double>& score, bool squared = false, edgeweight offset = 1, edgeweight factor = 1);
-    Graph calculate();
+    // Please note this class EdgeScoreAsWeight is deprecated and will be removed in future releases
+    TLX_DEPRECATED(EdgeScoreAsWeight(const Graph &G, const std::vector<double> &score,
+                                     bool squared = false, edgeweight offset = 1,
+                                     edgeweight factor = 1));
+    TLX_DEPRECATED(Graph calculate());
 
 private:
-    const Graph* G;
-    const std::vector<double>* score;
+    const Graph *G;
+    const std::vector<double> *score;
     bool squared;
     edgeweight offset;
     edgeweight factor;
-
 };
 
 } // namespace NetworKit

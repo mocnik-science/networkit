@@ -4,17 +4,18 @@
 
 namespace NetworKit {
 
-BinaryEdgeListPartitionReader::BinaryEdgeListPartitionReader(node firstNode, uint8_t width) : firstNode(firstNode), width(width) {
+BinaryEdgeListPartitionReader::BinaryEdgeListPartitionReader(node firstNode, uint8_t width)
+    : firstNode(firstNode), width(width) {
     if (width != 4 && width != 8) {
         throw std::runtime_error("Error: width must be 4 or 8");
     }
 }
 
-Partition BinaryEdgeListPartitionReader::read(const std::string& path) {
-    return read(std::vector<std::string>(1, path));
+Partition BinaryEdgeListPartitionReader::read(std::string_view path) {
+    return read(std::vector<std::string>(1, path.data()));
 }
 
-Partition BinaryEdgeListPartitionReader::read(const std::vector<std::string>& paths) {
+Partition BinaryEdgeListPartitionReader::read(const std::vector<std::string> &paths) {
     Partition zeta(0);
 
     if (!paths.empty()) {
@@ -46,7 +47,6 @@ Partition BinaryEdgeListPartitionReader::read(const std::vector<std::string>& pa
 
         next_input();
 
-
         index read_values = 0;
         while (is.good() && is.is_open()) {
             index u = read_little_endian(is, width);
@@ -76,9 +76,11 @@ Partition BinaryEdgeListPartitionReader::read(const std::vector<std::string>& pa
         }
 
         if (read_values < zeta.numberOfElements()) {
-            throw std::runtime_error("Error, read less values than there are elements in the partition.");
+            throw std::runtime_error(
+                "Error, read less values than there are elements in the partition.");
         } else if (read_values > zeta.numberOfElements()) {
-            throw std::runtime_error("Error, read more values than there are elements in the partition.");
+            throw std::runtime_error(
+                "Error, read more values than there are elements in the partition.");
         }
     }
 

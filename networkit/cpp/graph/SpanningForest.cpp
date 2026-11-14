@@ -16,8 +16,8 @@ void SpanningForest::run() {
     forest = GraphTools::copyNodes(*G);
     std::vector<bool> visited(G->upperNodeIdBound(), false);
 
-    G->forNodes([&](node s){
-        if (! visited[s]) {
+    G->forNodes([&](node s) {
+        if (!visited[s]) {
             Traversal::BFSEdgesFrom(*G, s, [&](node u, node v, edgeweight w, edgeid) {
                 visited[u] = true;
                 visited[v] = true;
@@ -26,6 +26,7 @@ void SpanningForest::run() {
         }
     });
 
+    hasRun = true;
     INFO("tree edges in SpanningForest: ", forest.numberOfEdges());
 }
 

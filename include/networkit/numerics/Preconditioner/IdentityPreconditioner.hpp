@@ -1,5 +1,5 @@
 /*
- * IdentityPreconditioner.h
+ * IdentityPreconditioner.hpp
  *
  *  Created on: Apr 23, 2016
  *      Author: Michael Wegner (michael.wegner@student.kit.edu)
@@ -22,15 +22,13 @@ public:
      * Constructs an identity preconditioner for the matrix @a A.
      * @param A
      */
-    IdentityPreconditioner(const CSRMatrix &)  {}
+    IdentityPreconditioner(const CSRMatrix &) {}
     virtual ~IdentityPreconditioner() = default;
 
     /**
      * Returns the preconditioned right-hand-side \f$P(b) = b\f$.
      */
-    Vector rhs(const Vector& b) const {
-        return b;
-    }
+    Vector rhs(const Vector &b) const { return b; }
 };
 
 } /* namespace NetworKit */

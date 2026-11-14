@@ -4,7 +4,6 @@
  *  Created on: 18.06.2013
  *      Author: cls
  */
-// networkit-format
 
 #include <fstream>
 #include <sstream>
@@ -17,14 +16,14 @@
 
 namespace NetworKit {
 
-EdgeListReader::EdgeListReader(char separator, node firstNode, const std::string &commentPrefix,
+EdgeListReader::EdgeListReader(char separator, node firstNode, std::string_view commentPrefix,
                                bool continuous, bool directed)
     : separator(separator), commentPrefix(commentPrefix), firstNode(firstNode),
       continuous(continuous), mapNodeIds(), directed(directed) {
     if (!continuous && firstNode != 0) {
         // firstNode not being 0 in the continuous = false case leads to a segmentation fault
         WARN("firstNode set to 0 since continuous is false");
-        firstNode = 0;
+        this->firstNode = 0;
     }
 }
 
@@ -35,7 +34,7 @@ const std::map<std::string, node> &EdgeListReader::getNodeMap() const {
     return this->mapNodeIds;
 }
 
-Graph EdgeListReader::read(const std::string &path) {
+Graph EdgeListReader::read(std::string_view path) {
     this->mapNodeIds.clear();
     MemoryMappedFile mmfile(path);
     auto it = mmfile.cbegin();

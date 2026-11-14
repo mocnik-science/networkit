@@ -5,6 +5,8 @@
  * Author: Franz-Benjamin Mocnik <mail@mocnik-science.net>
  */
 
+#include <unordered_map>
+
 #include <networkit/distance/Volume.hpp>
 #include <networkit/graph/Graph.hpp>
 #include <networkit/graph/GraphTools.hpp>
@@ -22,13 +24,13 @@ std::unordered_map<node, double> Volume::nodesWithinDistance(const Graph &G, dou
         for (auto &m : msToCheck) {
             for (node m2 : G.neighborRange(m)) {
                 r2 = ms[m] + G.weight(m, m2);
-                if (ms.count(m2) == 0) {
+                if (!ms.contains(m2)) {
                     if (r2 <= r) {
                         ms[m2] = r2;
                         msToCheckNew.push_back(m2);
                     }
                 } else {
-                    ms[m2] = fmin(ms[m2], r2);
+                    ms[m2] = std::fmin(ms[m2], r2);
                 }
             }
         }
@@ -49,22 +51,17 @@ std::vector<double> Volume::volume(const Graph &G, std::vector<double> rs, count
     std::vector<double> xs(rs.size(), 0);
     double rmax = *std::max_element(std::begin(rs), std::end(rs));
     for (count j = 0; j < samples; j++) {
-        std::unordered_map<node, double> ms = Volume::nodesWithinDistance(G, rmax, GraphTools::randomNode(G));
-        count i = 0;
-        for (const auto &r : rs) {
-            for (const auto &it : ms) {
-                if (it.second <= r) {
-                    xs[i] += 1;
-                }
-            }
-            i++;
-        }
+        std::unordered_map<node, double> ms =
+            Volume::nodesWithinDistance(G, rmax, GraphTools::randomNode(G));
+        for (count i = 0; i < rs.size(); ++i)
+            xs[i] += std::count_if(ms.begin(), ms.end(), [&](const auto &nodeDist) -> bool {
+                return nodeDist.second <= rs[i];
+            });
     }
     std::vector<double> ys;
     ys.reserve(xs.size());
-    for (const auto &x : xs) {
-        ys.push_back(x / samples);
-    }
+    std::transform(xs.cbegin(), xs.cend(), std::back_inserter(ys),
+                   [samples](double x) { return x / static_cast<double>(samples); });
     return ys;
 }
 

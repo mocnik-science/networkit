@@ -5,14 +5,13 @@
  *		 Author: nemes, Eugenio Angriman
  */
 
-// networkit-format
-
 #ifndef NDEBUG
 #include <algorithm>
 #endif
 #include <atomic>
 #include <omp.h>
 #include <queue>
+#include <ranges>
 
 #include <networkit/centrality/TopHarmonicCloseness.hpp>
 #include <networkit/reachability/ReachableNodes.hpp>
@@ -20,8 +19,9 @@
 namespace NetworKit {
 
 TopHarmonicCloseness::TopHarmonicCloseness(const Graph &G, count k, bool useNBbound)
-    : G(&G), k(k), useNBbound(useNBbound), prioQ(Greater<double>{hCloseness}),
-      topKNodesPQ(Less<double>{hCloseness}) {
+    : G(&G), k(k), useNBbound(useNBbound), nodeListPtr(nullptr),
+      topKNodesPQ(Aux::LessInVector<double>{hCloseness}),
+      prioQ(Aux::GreaterInVector<double>{hCloseness}) {
 
     if (k == 0 || k > G.numberOfNodes())
         throw std::runtime_error("Error: k must be in [1,...,n].");
@@ -29,29 +29,49 @@ TopHarmonicCloseness::TopHarmonicCloseness(const Graph &G, count k, bool useNBbo
     if (useNBbound && G.isWeighted())
         WARN("NBbound only works with unweighted graphs, edge weights will be ignored!");
 
-    const count n = G.upperNodeIdBound();
-
-    hCloseness.resize(n);
-    reachableNodes.resize(n);
-
-    if (!useNBbound && G.isWeighted()) {
-        distanceGlobal.resize(omp_get_max_threads(), std::vector<edgeweight>(n));
-        dijkstraHeaps.reserve(omp_get_max_threads());
-        for (int i = 0; i < omp_get_max_threads(); ++i)
-            dijkstraHeaps.emplace_back(Less<edgeweight>{distanceGlobal[i]});
-        minEdgeWeight = std::numeric_limits<edgeweight>::max();
-        G.forEdges([&](node, node, edgeweight ew) { minEdgeWeight = std::min(minEdgeWeight, ew); });
-    } else {
-        visitedGlobal.resize(omp_get_max_threads(), std::vector<uint8_t>(n));
-        tsGlobal.resize(omp_get_max_threads(), 0);
-    }
-
-    topKNodesPQ.reserve(k);
-    prioQ.reserve(n);
     omp_init_lock(&lock);
 }
 
 TopHarmonicCloseness::~TopHarmonicCloseness() = default;
+
+void TopHarmonicCloseness::init() {
+    const count n = G->upperNodeIdBound();
+    hCloseness.clear();
+    hCloseness.resize(n);
+    reachableNodes.clear();
+    reachableNodes.resize(n);
+    trail.clear();
+    wccPtr.reset();
+    topKNodes.clear();
+    topKScores.clear();
+    topKNodesPQ.clear();
+    topKNodesPQ.reserve(k);
+    prioQ.clear();
+    prioQ.reserve(n);
+    reachU.clear();
+    reachL.clear();
+    numberOfNodesAtLevelGlobal.clear();
+    nodesAtCurrentLevelGlobal.clear();
+    nodesAtLevelGlobal.clear();
+    levelImprovement.clear();
+
+    if (!useNBbound && G->isWeighted()) {
+        distanceGlobal.clear();
+        distanceGlobal.resize(omp_get_max_threads(), std::vector<edgeweight>(n));
+        dijkstraHeaps.clear();
+        dijkstraHeaps.reserve(omp_get_max_threads());
+        for (int i = 0; i < omp_get_max_threads(); ++i)
+            dijkstraHeaps.emplace_back(Aux::LessInVector<edgeweight>{distanceGlobal[i]});
+        minEdgeWeight = std::numeric_limits<edgeweight>::max();
+        G->forEdges(
+            [&](node, node, edgeweight ew) { minEdgeWeight = std::min(minEdgeWeight, ew); });
+    } else {
+        visitedGlobal.clear();
+        visitedGlobal.resize(omp_get_max_threads(), std::vector<uint8_t>(n));
+        tsGlobal.clear();
+        tsGlobal.resize(omp_get_max_threads(), 0);
+    }
+}
 
 void TopHarmonicCloseness::computeReachableNodes() {
     if (G->isDirected()) {
@@ -70,6 +90,8 @@ void TopHarmonicCloseness::computeReachableNodes() {
 }
 
 void TopHarmonicCloseness::run() {
+    init();
+
     computeReachableNodes();
     if (useNBbound)
         runNBbound();
@@ -100,7 +122,11 @@ void TopHarmonicCloseness::runNBcut() {
     else
         G->parallelForNodes([&](node u) { hCloseness[u] = initialBoundNBcutUnweighted(u); });
 
-    prioQ.build_heap(G->nodeRange().begin(), G->nodeRange().end());
+    if (!nodeListPtr || nodeListPtr->empty()) {
+        prioQ.build_heap(G->nodeRange().begin(), G->nodeRange().end());
+    } else {
+        prioQ.build_heap(nodeListPtr->begin(), nodeListPtr->end());
+    }
 
     std::atomic_bool stop{false};
     std::atomic<double> kthCloseness{-1};
@@ -154,7 +180,11 @@ void TopHarmonicCloseness::runNBbound() {
         computeReachableNodesBounds();
     computeNeighborhoodBasedBound();
 
-    prioQ.build_heap(G->nodeRange().begin(), G->nodeRange().end());
+    if (!nodeListPtr || nodeListPtr->empty()) {
+        prioQ.build_heap(G->nodeRange().begin(), G->nodeRange().end());
+    } else {
+        prioQ.build_heap(nodeListPtr->begin(), nodeListPtr->end());
+    }
 
     std::atomic_bool stop{false};
 
@@ -266,7 +296,7 @@ bool TopHarmonicCloseness::bfscutUnweighted(node source, double kthCloseness) {
 
 bool TopHarmonicCloseness::bfscutWeighted(node source, double kthCloseness) {
     auto &distance = distanceGlobal[omp_get_thread_num()];
-    std::fill(distance.begin(), distance.end(), std::numeric_limits<edgeweight>::max());
+    std::ranges::fill(distance, std::numeric_limits<edgeweight>::max());
     distance[source] = 0;
     auto &pq = dijkstraHeaps[omp_get_thread_num()];
     pq.clear();
@@ -334,9 +364,7 @@ void TopHarmonicCloseness::bfsbound(node source) {
     for (count i = 1; i < numberOfNodesAtLevel.size() && numberOfNodesAtLevel[i] > 0; ++i)
         numberOfNodesAtLevel[i] = 0;
 
-    assert(std::count_if(numberOfNodesAtLevel.begin(), numberOfNodesAtLevel.end(),
-                         [](count i) { return i > 0; })
-           == 0);
+    assert(std::ranges::count_if(numberOfNodesAtLevel, [](count i) { return i > 0; }) == 0);
 
     std::queue<node> q1, q2;
     q1.push(source);

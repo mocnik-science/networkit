@@ -7,10 +7,10 @@
 
 #include <gtest/gtest.h>
 
-#include <networkit/algebraic/algorithms/AlgebraicPageRank.hpp>
-#include <networkit/io/SNAPGraphReader.hpp>
 #include <networkit/algebraic/CSRMatrix.hpp>
+#include <networkit/algebraic/algorithms/AlgebraicPageRank.hpp>
 #include <networkit/auxiliary/Timer.hpp>
+#include <networkit/io/SNAPGraphReader.hpp>
 
 #include <networkit/centrality/PageRank.hpp>
 
@@ -33,7 +33,7 @@ TEST(AlgebraicPageRankGTest, testPageRankDirected) {
     apr.run();
     t.stop();
     INFO("Computing page rank algebraically took ", t.elapsedMicroseconds() / 1000.0);
-    std::vector<std::pair<node, double> > pr_ranking = apr.ranking();
+    std::vector<std::pair<node, double>> pr_ranking = apr.ranking();
 
     const double tol = 1e-3;
     EXPECT_EQ(pr_ranking[0].first, 699u);
@@ -52,17 +52,17 @@ TEST(AlgebraicPageRankGTest, testPageRankDirected) {
 }
 
 TEST(AlgebraicPageRankGTest, testPageRankCentrality) {
- /* Graph:
-    0    3   6
-     \  / \ /
-      2 -- 5
-     /  \ / \
-    1    4   7
+    /* Graph:
+       0    3   6
+        \  / \ /
+         2 -- 5
+        /  \ / \
+       1    4   7
 
-    Edges in the upper row have weight 3,
-    the edge in the middle row has weight 1.5,
-    edges in the lower row have weight 2.
- */
+       Edges in the upper row have weight 3,
+       the edge in the middle row has weight 1.5,
+       edges in the lower row have weight 2.
+    */
     count n = 8;
     Graph G(n, true);
 
@@ -83,14 +83,14 @@ TEST(AlgebraicPageRankGTest, testPageRankCentrality) {
 
     // compare to Matlab results
     const double tol = 1e-4;
-    EXPECT_NEAR(0.0753, fabs(cen[0]), tol);
-    EXPECT_NEAR(0.0565, fabs(cen[1]), tol);
-    EXPECT_NEAR(0.2552, fabs(cen[2]), tol);
-    EXPECT_NEAR(0.1319, fabs(cen[3]), tol);
-    EXPECT_NEAR(0.0942, fabs(cen[4]), tol);
-    EXPECT_NEAR(0.2552, fabs(cen[5]), tol);
-    EXPECT_NEAR(0.0753, fabs(cen[6]), tol);
-    EXPECT_NEAR(0.0565, fabs(cen[7]), tol);
+    EXPECT_NEAR(0.0753, std::fabs(cen[0]), tol);
+    EXPECT_NEAR(0.0565, std::fabs(cen[1]), tol);
+    EXPECT_NEAR(0.2552, std::fabs(cen[2]), tol);
+    EXPECT_NEAR(0.1319, std::fabs(cen[3]), tol);
+    EXPECT_NEAR(0.0942, std::fabs(cen[4]), tol);
+    EXPECT_NEAR(0.2552, std::fabs(cen[5]), tol);
+    EXPECT_NEAR(0.0753, std::fabs(cen[6]), tol);
+    EXPECT_NEAR(0.0565, std::fabs(cen[7]), tol);
 }
 
 } /* namespace NetworKit */

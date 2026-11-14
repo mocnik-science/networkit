@@ -7,6 +7,10 @@ from libcpp.string cimport string
 
 ctypedef uint64_t count
 ctypedef uint64_t index
+ctypedef uint64_t edgeid
+ctypedef index node
+ctypedef double coordinate
+ctypedef double edgeweight
 
 cdef extern from "cython_helper.h":
 	void throw_runtime_error(string message)
@@ -15,6 +19,9 @@ cdef extern from "<algorithm>" namespace "std":
 	void swap[T](T &a,  T &b)
 	_Partition move( _Partition t) nogil
 	_Cover move(_Cover t) nogil
+
+cdef extern from "<networkit/structures/Partition.hpp>" namespace "NetworKit::Partition":
+	index _noneIndex "NetworKit::Partition::noneIndex"
 
 cdef extern from "<networkit/structures/Cover.hpp>":
 
@@ -50,6 +57,7 @@ cdef class Cover:
 cdef extern from "<networkit/structures/Partition.hpp>":
 
 	cdef cppclass _Partition "NetworKit::Partition":
+		index noneIndex
 		_Partition() except +
 		_Partition(index) except +
 		_Partition(_Partition) except +

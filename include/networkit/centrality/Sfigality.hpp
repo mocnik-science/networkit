@@ -1,5 +1,5 @@
 /*
- * Sfigality.h
+ * Sfigality.hpp
  *
  *  Created on: 20.01.2016
  *      Author:Christian Staudt
@@ -17,24 +17,25 @@ namespace NetworKit {
  * The sfigality of a node is the ratio of neighboring nodes that have
  * a higher degree than the node itself.
  */
-class Sfigality: public Centrality {
+class Sfigality : public Centrality {
 public:
     /**
      * Constructs the Sfigality class for the given Graph @a G. Sfigality is a new type of
-     * node centrality measures that is high if neighboring nodes have a higher degree, e.g. in social networks, if your friends have more friends than you. Formally:
+     * node centrality measures that is high if neighboring nodes have a higher degree, e.g. in
+     social networks, if your friends have more friends than you. Formally:
      *
      * $$\\sigma(u) = \\frac{| \\{ v: \\{u,v\\} \\in E, deg(u) < deg(v) \\} |}{ deg(u) }$$
      *
      * @param G The graph.
 
      */
-    Sfigality(const Graph& G);
+    Sfigality(const Graph &G);
 
     void run() override;
 
     /**
-     * Not implemented.
-     * The maximum sfigality is 1, when all neighbors of a node have a higher degree.
+     * Returns the node that has the most neighbours with a higher degree than itself (max
+     * Sfigality).
      */
     double maximum() override;
 };

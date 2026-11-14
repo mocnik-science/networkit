@@ -6,12 +6,13 @@
 
 namespace NetworKit {
 
-UnionMaximumSpanningForest::UnionMaximumSpanningForest(const Graph &G) : G(&G), hasWeightedEdges(false), hasUMSF(false), hasAttribute(false) {}
+UnionMaximumSpanningForest::UnionMaximumSpanningForest(const Graph &G)
+    : G(&G), hasWeightedEdges(false), hasUMSF(false), hasAttribute(false) {}
 
 void UnionMaximumSpanningForest::run() {
     hasRun = false;
     hasUMSF = false;
-    hasAttribute= false;
+    hasAttribute = false;
 
     Aux::SignalHandler handler;
 
@@ -48,7 +49,7 @@ void UnionMaximumSpanningForest::run() {
 
     edgeweight currentAttribute = std::numeric_limits<edgeweight>::max();
 
-    std::vector<std::pair<node, node> > nodesToMerge;
+    std::vector<std::pair<node, node>> nodesToMerge;
     UnionFind uf(G->upperNodeIdBound());
 
     for (weightedEdge e : weightedEdges) {
@@ -60,7 +61,6 @@ void UnionMaximumSpanningForest::run() {
             nodesToMerge.clear();
             currentAttribute = e.attribute;
         }
-
 
         if (uf.find(e.u) != uf.find(e.v)) {
             if (useEdgeWeights) {
@@ -74,7 +74,6 @@ void UnionMaximumSpanningForest::run() {
             }
 
             nodesToMerge.emplace_back(e.u, e.v);
-
         }
     }
 
@@ -86,7 +85,9 @@ void UnionMaximumSpanningForest::run() {
 }
 
 bool UnionMaximumSpanningForest::inUMSF(edgeid eid) const {
-    if (!hasAttribute) throw std::runtime_error("Error: Either the attribute hasn't be calculated yet or the graph has no edge ids.");
+    if (!hasAttribute)
+        throw std::runtime_error(
+            "Error: Either the attribute hasn't be calculated yet or the graph has no edge ids.");
 
     return umsfAttribute[eid];
 }
@@ -101,10 +102,12 @@ bool UnionMaximumSpanningForest::inUMSF(node u, node v) const {
     }
 }
 
-std::vector< bool > UnionMaximumSpanningForest::getAttribute(bool move) {
+std::vector<bool> UnionMaximumSpanningForest::getIndicator(bool move) {
     std::vector<bool> result;
 
-    if (!hasAttribute) throw std::runtime_error("Error: The run() method must be executed first");
+    if (!hasAttribute)
+        throw std::runtime_error(
+            "Error: The run() method must be executed first or the graph has no edge ids.");
 
     if (move) {
         result = std::move(umsfAttribute);
@@ -116,10 +119,18 @@ std::vector< bool > UnionMaximumSpanningForest::getAttribute(bool move) {
     return result;
 }
 
+std::vector<bool> UnionMaximumSpanningForest::getAttribute(bool move) {
+    WARN("getAttribute() is deprecated and will be removed in future releases. Use getIndicator() "
+         "instead.");
+
+    return getIndicator(move);
+}
+
 Graph UnionMaximumSpanningForest::getUMSF(bool move) {
     Graph result;
 
-    if (!hasUMSF) throw std::runtime_error("Error: The run() method must be executed first");
+    if (!hasUMSF)
+        throw std::runtime_error("Error: The run() method must be executed first");
 
     if (move) {
         result = std::move(umsf);
@@ -129,14 +140,6 @@ Graph UnionMaximumSpanningForest::getUMSF(bool move) {
     }
 
     return result;
-}
-
-std::string UnionMaximumSpanningForest::toString() const {
-    return "Union maximum-weight spanning forest";
-}
-
-bool UnionMaximumSpanningForest::isParallel() const {
-    return false;
 }
 
 } // namespace NetworKit

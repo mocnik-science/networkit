@@ -5,27 +5,28 @@
  *      Author: Eugenio Angriman <angrimae@hu-berlin.de>
  */
 
-// networkit-format
-
 #include <networkit/centrality/GroupClosenessGrowShrink.hpp>
 
 #include "GroupClosenessGrowShrinkImpl.hpp"
 
 namespace NetworKit {
 
-GroupClosenessGrowShrink::GroupClosenessGrowShrink(const Graph &G, std::vector<node> group,
+GroupClosenessGrowShrink::GroupClosenessGrowShrink(const Graph &G, const std::vector<node> &group,
                                                    bool extended, count insertions,
                                                    count maxIterations)
     : G(&G),
-      weightedImpl{G.isWeighted() ? std::make_unique<
-                       GroupClosenessGrowShrinkDetails::GroupClosenessGrowShrinkImpl<edgeweight>>(
-                       G, group, extended, insertions, maxIterations)
-                                  : nullptr},
-      unweightedImpl{G.isWeighted()
-                         ? nullptr
-                         : std::make_unique<
-                             GroupClosenessGrowShrinkDetails::GroupClosenessGrowShrinkImpl<count>>(
-                             G, group, extended, insertions, maxIterations)} {}
+      weightedImpl{
+          G.isWeighted()
+              ? std::make_unique<
+                    GroupClosenessGrowShrinkDetails::GroupClosenessGrowShrinkImpl<edgeweight>>(
+                    G, group, extended, insertions, maxIterations)
+              : nullptr},
+      unweightedImpl{
+          G.isWeighted()
+              ? nullptr
+              : std::make_unique<
+                    GroupClosenessGrowShrinkDetails::GroupClosenessGrowShrinkImpl<count>>(
+                    G, group, extended, insertions, maxIterations)} {}
 
 GroupClosenessGrowShrink::~GroupClosenessGrowShrink() = default;
 

@@ -12,14 +12,15 @@
 namespace NetworKit {
 
 template <typename AttributeT>
-PrefixJaccardScore<AttributeT>::PrefixJaccardScore(const Graph &G, const std::vector< AttributeT > &attribute) :
-    EdgeScore<double>(G), inAttribute(&attribute) {
-}
+PrefixJaccardScore<AttributeT>::PrefixJaccardScore(const Graph &G,
+                                                   const std::vector<AttributeT> &attribute)
+    : EdgeScore<double>(G), inAttribute(&attribute) {}
 
 template <typename AttributeT>
 void PrefixJaccardScore<AttributeT>::run() {
-    //this-> required to access members of base class, since this is a template class.
-    if (!this->G->hasEdgeIds()) throw std::runtime_error("Error, edges need to be indexed first");
+    // this-> required to access members of base class, since this is a template class.
+    if (!this->G->hasEdgeIds())
+        throw std::runtime_error("Error, edges need to be indexed first");
 
     this->scoreData.clear();
     this->scoreData.resize(this->G->upperEdgeIdBound());
@@ -42,7 +43,7 @@ void PrefixJaccardScore<AttributeT>::run() {
 
     std::vector<size_t> rankedEdgeBegin(G->upperNodeIdBound() + 1);
     std::vector<RankedEdge> rankedEdges;
-    rankedEdges.reserve(2*G->numberOfEdges());
+    rankedEdges.reserve(2 * G->numberOfEdges());
 
     for (node u = 0; u < G->upperNodeIdBound(); ++u) {
         rankedEdgeBegin[u] = rankedEdges.size();
@@ -55,10 +56,11 @@ void PrefixJaccardScore<AttributeT>::run() {
     rankedEdgeBegin[G->upperNodeIdBound()] = rankedEdges.size();
 
     this->G->balancedParallelForNodes([&](node u) {
-        if (this->G->degree(u) == 0) return;
+        if (this->G->degree(u) == 0)
+            return;
 
         const auto beginIt = rankedEdges.begin() + rankedEdgeBegin[u];
-        const auto endIt = rankedEdges.begin() + rankedEdgeBegin[u+1];
+        const auto endIt = rankedEdges.begin() + rankedEdgeBegin[u + 1];
 
         std::sort(beginIt, endIt, std::greater<RankedEdge>());
 
@@ -78,7 +80,8 @@ void PrefixJaccardScore<AttributeT>::run() {
         }
     });
 
-    std::vector<std::vector<bool>> uMarker(omp_get_max_threads(), std::vector<bool>(G->upperNodeIdBound(), false));
+    std::vector<std::vector<bool>> uMarker(omp_get_max_threads(),
+                                           std::vector<bool>(G->upperNodeIdBound(), false));
     auto vMarker = uMarker;
 
     this->G->parallelForEdges([&](node u, node v, edgeid eid) {
@@ -88,8 +91,8 @@ void PrefixJaccardScore<AttributeT>::run() {
 
         auto uIt = rankedEdges.begin() + rankedEdgeBegin[u];
         auto vIt = rankedEdges.begin() + rankedEdgeBegin[v];
-        const auto uEndIt = rankedEdges.begin() + rankedEdgeBegin[u+1];
-        const auto vEndIt = rankedEdges.begin() + rankedEdgeBegin[v+1];
+        const auto uEndIt = rankedEdges.begin() + rankedEdgeBegin[u + 1];
+        const auto vEndIt = rankedEdges.begin() + rankedEdgeBegin[v + 1];
 
         double commonNeighbors = 0.0;
         double uNeighbors = 0.0;
@@ -132,18 +135,15 @@ void PrefixJaccardScore<AttributeT>::run() {
                 ++vIt;
             }
 
-            bestJaccard = std::max(bestJaccard, commonNeighbors * 1.0 / (uNeighbors + vNeighbors + commonNeighbors));
+            bestJaccard = std::max(bestJaccard, commonNeighbors * 1.0
+                                                    / (uNeighbors + vNeighbors + commonNeighbors));
 
             ++curRank;
         }
 
-        G->forNeighborsOf(u, [&](node w) {
-            uMarker[tid][w] = false;
-        });
+        G->forNeighborsOf(u, [&](node w) { uMarker[tid][w] = false; });
 
-        G->forNeighborsOf(v, [&](node w) {
-            vMarker[tid][w] = false;
-        });
+        G->forNeighborsOf(v, [&](node w) { vMarker[tid][w] = false; });
 
         this->scoreData[eid] = bestJaccard;
     });
@@ -151,17 +151,7 @@ void PrefixJaccardScore<AttributeT>::run() {
     this->hasRun = true;
 }
 
-template <typename AttributeT>
-double PrefixJaccardScore<AttributeT>::score(node, node) {
-    throw std::runtime_error("Not implemented: Use scores() instead.");
-}
-
-template <typename AttributeT>
-double PrefixJaccardScore<AttributeT>::score(edgeid) {
-    throw std::runtime_error("Not implemented: Use scores() instead.");
-}
-
 template class PrefixJaccardScore<double>;
 template class PrefixJaccardScore<count>;
 
-}
+} // namespace NetworKit

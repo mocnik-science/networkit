@@ -29,13 +29,12 @@ namespace NetworKit {
  *
  */
 
-class ChungLuGenerator final: public StaticDegreeSequenceGenerator {
+class ChungLuGenerator final : public StaticDegreeSequenceGenerator {
     count sum_deg;
     count n;
 
 public:
-
-    ChungLuGenerator(const std::vector<count>& degreeSequence);
+    ChungLuGenerator(const std::vector<count> &degreeSequence);
 
     /**
      * Generates graph with expected degree sequence seq.

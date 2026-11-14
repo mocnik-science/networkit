@@ -5,24 +5,24 @@
  *      Author: ebergamini, michele borassi
  */
 
-// networkit-format
-
 #include <omp.h>
 #include <queue>
 #include <stack>
 
 #include <networkit/auxiliary/Log.hpp>
+#include <networkit/auxiliary/VectorComparator.hpp>
 #include <networkit/centrality/TopCloseness.hpp>
 #include <networkit/graph/BFS.hpp>
 #include <networkit/reachability/ReachableNodes.hpp>
 
 #include <tlx/container/d_ary_addressable_int_heap.hpp>
 #include <tlx/container/d_ary_heap.hpp>
+#include <tlx/unused.hpp>
 
 namespace NetworKit {
 
 TopCloseness::TopCloseness(const Graph &G, count k, bool first_heu, bool sec_heu)
-    : G(G), k(k), first_heu(first_heu), sec_heu(sec_heu) {}
+    : G(G), k(k), first_heu(first_heu), sec_heu(sec_heu), nodeListPtr(nullptr) {}
 
 void TopCloseness::init() {
     n = G.upperNodeIdBound();
@@ -200,34 +200,57 @@ void TopCloseness::BFSbound(node x, std::vector<double> &S2, count &visEdges,
 
     edgeweight level_bound = 2.0 * closeNodes + static_cast<double>(farNodes);
     const auto &reachU = *(reachUPtr.get());
-    for (count j = 0; j < levels[1].size(); j++) {
-        node w = levels[1][j];
-        // we subtract 2 not to count the node itself
-        double bound =
-            (level_bound - 2 - G.degree(w)) * (n - 1.0) / (reachU[w] - 1.0) / (reachU[w] - 1.0);
-        if (toAnalyze[w] && bound > S2[w]
-            && (!G.isDirected() || sccsPtr->componentOfNode(w) == sccsPtr->componentOfNode(x))) {
-            S2[w] = bound;
-        }
-    }
-
-    // now we compute it for the other levels
-    for (omp_index i = 2; i <= static_cast<omp_index>(nLevs); i++) {
-        if (!G.isDirected() && i > 2) {
-            level_bound += sumLevs[i - 3];
-        }
-        if (i < nLevs) {
-            level_bound -= static_cast<edgeweight>(sumLevs[nLevs] - sumLevs[i + 1]);
-        }
-        for (count j = 0; j < levels[i].size(); j++) {
-            node w = levels[i][j];
-            double bound =
-                (level_bound - 2 - G.degree(w)) * (n - 1.0) / (reachU[w] - 1.0) / (reachU[w] - 1.0);
-            if (toAnalyze[w] && bound > S2[w]
-                && (!G.isDirected()
-                    || sccsPtr->componentOfNode(w) == sccsPtr->componentOfNode(x))) {
-                // TODO MICHELE: as before.
+    const auto nLevsInt = static_cast<int32_t>(nLevs);
+    if (!G.isDirected()) {
+        for (node w : levels[1]) {
+            // we subtract 2 not to count the node itself
+            const double reach = reachU[w] - 1.0;
+            const double bound = (level_bound - 2 - G.degree(w)) * (n - 1.0) / reach / reach;
+            if (toAnalyze[w] && bound > S2[w]) {
                 S2[w] = bound;
+            }
+        }
+
+        // now we compute it for the other levels
+        for (int32_t i = 2; i <= nLevsInt; ++i) {
+            if (i > 2) {
+                level_bound += sumLevs[i - 3];
+            }
+            if (i < nLevsInt) {
+                level_bound -= static_cast<edgeweight>(sumLevs[nLevs] - sumLevs[i + 1]);
+            }
+            for (node w : levels[i]) {
+                const double reach = reachU[w] - 1.0;
+                const double bound = (level_bound - 2 - G.degree(w)) * (n - 1.0) / reach / reach;
+                if (toAnalyze[w] && bound > S2[w]) {
+                    // TODO MICHELE: as before.
+                    S2[w] = bound;
+                }
+            }
+        }
+    } else {
+        const auto componentX = sccsPtr->componentOfNode(x);
+        for (node w : levels[1]) {
+            // we subtract 2 not to count the node itself
+            const double reach = reachU[w] - 1.0;
+            const double bound = (level_bound - 2 - G.degree(w)) * (n - 1.0) / reach / reach;
+            if (toAnalyze[w] && bound > S2[w] && sccsPtr->componentOfNode(w) == componentX) {
+                S2[w] = bound;
+            }
+        }
+
+        // now we compute it for the other levels
+        for (int32_t i = 2; i <= nLevsInt; ++i) {
+            if (i < nLevsInt) {
+                level_bound -= static_cast<edgeweight>(sumLevs[nLevs] - sumLevs[i + 1]);
+            }
+            for (node w : levels[i]) {
+                const double reach = reachU[w] - 1.0;
+                const double bound = (level_bound - 2 - G.degree(w)) * (n - 1.0) / reach / reach;
+                if (toAnalyze[w] && bound > S2[w] && sccsPtr->componentOfNode(w) == componentX) {
+                    // TODO MICHELE: as before.
+                    S2[w] = bound;
+                }
             }
         }
     }
@@ -321,9 +344,9 @@ double TopCloseness::BFScut(node v, double x, std::vector<bool> &visited,
 
 void TopCloseness::run() {
     init();
-    tlx::d_ary_heap<node, 2, LargerFarness> top{farness};
+    tlx::d_ary_heap<node, 2, Aux::GreaterInVector<double>> top{farness};
     top.reserve(k);
-    std::vector<bool> toAnalyze(n, true);
+    std::vector<bool> toAnalyze(n, false);
     omp_lock_t lock;
     omp_init_lock(&lock);
 
@@ -344,12 +367,13 @@ void TopCloseness::run() {
             farness[u] = -(static_cast<double>(G.degreeOut(u)));
         }
     });
-    tlx::d_ary_addressable_int_heap<node, 2, SmallerFarness> Q{farness};
+    tlx::d_ary_addressable_int_heap<node, 2, Aux::LessInVector<double>> Q{farness};
 
-    std::vector<node> nodes;
-    nodes.reserve(G.numberOfNodes());
-    G.forNodes([&](const node u) { nodes.emplace_back(u); });
-    Q.build_heap(std::move(nodes));
+    if (!nodeListPtr || nodeListPtr->empty()) {
+        Q.build_heap(G.nodeRange().begin(), G.nodeRange().end());
+    } else {
+        Q.build_heap(nodeListPtr->begin(), nodeListPtr->end());
+    }
     DEBUG("Done filling the queue");
 
     std::vector<std::vector<bool>> visitedVec;
@@ -360,6 +384,17 @@ void TopCloseness::run() {
         visitedVec.resize(omp_get_max_threads(), std::vector<bool>(n));
         distVec.resize(omp_get_max_threads(), std::vector<count>(n));
         predVec.resize(omp_get_max_threads(), std::vector<node>(n));
+    }
+
+    // Disable analyzing nodes, which are not part of the nodeList (if given).
+    // Otherwise all nodes need to be checked.
+    if (!nodeListPtr || nodeListPtr->empty()) {
+        std::fill(toAnalyze.begin(), toAnalyze.end(), true);
+    } else {
+#pragma omp parallel
+        for (omp_index u = 0; u < static_cast<omp_index>(nodeListPtr->size()); ++u) {
+            toAnalyze[(*nodeListPtr)[u]] = true;
+        }
     }
 
     double kth = std::numeric_limits<double>::max(); // like in Crescenzi
@@ -413,7 +448,7 @@ void TopCloseness::run() {
                         omp_set_lock(&lock);
                         if (farness[v] < S[v] && toAnalyze[v]) { // Have to check again, because the
                                                                  // variables might have changed
-                            imp++;
+                            ++imp;
                             farness[v] = S[v];
                             Q.update(v);
                         }
@@ -421,6 +456,7 @@ void TopCloseness::run() {
                     }
                 }
                 DEBUG("    We have improved ", imp, " bounds.");
+                tlx::unused(imp);
             } else {
                 // MICHELE: we use BFScut to bound the centrality of s.
                 DEBUG("    Running BFScut with x=", kth, " (degree:", G.degreeOut(s), ").");

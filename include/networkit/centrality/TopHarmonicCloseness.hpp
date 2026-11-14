@@ -8,10 +8,9 @@
 #ifndef NETWORKIT_CENTRALITY_TOP_HARMONIC_CLOSENESS_HPP_
 #define NETWORKIT_CENTRALITY_TOP_HARMONIC_CLOSENESS_HPP_
 
-// networkit-format
-
 #include <memory>
 
+#include <networkit/auxiliary/VectorComparator.hpp>
 #include <networkit/base/Algorithm.hpp>
 #include <networkit/components/WeaklyConnectedComponents.hpp>
 #include <networkit/graph/Graph.hpp>
@@ -77,6 +76,17 @@ public:
      */
     std::vector<edgeweight> topkScoresList(bool includeTrail = false);
 
+    /**
+     * @brief Restricts the top-k harmonic closeness computation to a subset of nodes.
+     * If the given list is empty, all nodes in the graph will be considered.
+     * Note: Actual existence of included nodes in the graph is not checked.
+     *
+     * @param nodeList Subset of nodes.
+     */
+    void restrictTopKComputationToNodes(const std::vector<node> &nodeList) {
+        nodeListPtr = &nodeList;
+    };
+
 private:
     const Graph *G;
     const count k;
@@ -89,6 +99,7 @@ private:
 
     std::vector<node> topKNodes;
     std::vector<double> topKScores;
+    const std::vector<node> *nodeListPtr;
 
     // For NBbound
     std::vector<count> reachU, reachL;
@@ -106,31 +117,19 @@ private:
         }
     }
 
-    template <class Type>
-    struct Greater {
-        Greater(const std::vector<Type> &vec) : vec(&vec) {}
-        bool operator()(node u, node v) const noexcept { return (*vec)[u] > (*vec)[v]; }
-        const std::vector<Type> *vec;
-    };
-
-    template <class Type>
-    struct Less {
-        Less(const std::vector<Type> &vec) : vec(&vec) {}
-        bool operator()(node u, node v) const noexcept { return (*vec)[u] < (*vec)[v]; }
-        const std::vector<Type> *vec;
-    };
-
-    tlx::d_ary_addressable_int_heap<node, 2, Greater<double>> prioQ;
-    tlx::d_ary_addressable_int_heap<node, 2, Less<double>> topKNodesPQ;
+    tlx::d_ary_addressable_int_heap<node, 2, Aux::LessInVector<double>> topKNodesPQ;
+    tlx::d_ary_addressable_int_heap<node, 2, Aux::GreaterInVector<double>> prioQ;
     std::vector<node> trail;
 
     // For weighted graphs
-    std::vector<tlx::d_ary_addressable_int_heap<node, 2, Less<edgeweight>>> dijkstraHeaps;
+    std::vector<tlx::d_ary_addressable_int_heap<node, 2, Aux::LessInVector<edgeweight>>>
+        dijkstraHeaps;
     std::vector<std::vector<edgeweight>> distanceGlobal;
     edgeweight minEdgeWeight;
 
     omp_lock_t lock;
 
+    void init();
     void runNBcut();
     void runNBbound();
     bool bfscutUnweighted(node source, double kthCloseness);

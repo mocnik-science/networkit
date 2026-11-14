@@ -4,7 +4,6 @@
  *  Created on: 26.05.2018
  *      Author: Manuel Penschuck <networkit@manuel.jetzt>
  */
-// networkit-format
 
 #include "GlobalCurveballImpl.hpp"
 #include <networkit/auxiliary/Random.hpp>
@@ -63,10 +62,6 @@ void GlobalCurveball::run() {
 Graph GlobalCurveball::getGraph() {
     assureFinished();
     return impl->getGraph();
-}
-
-std::string GlobalCurveball::toString() const {
-    return "GlobalCurveball";
 }
 
 } // namespace NetworKit

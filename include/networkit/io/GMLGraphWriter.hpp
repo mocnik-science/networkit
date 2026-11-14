@@ -5,8 +5,6 @@
  *      Author: Christian Staudt
  */
 
-// networkit-format
-
 #ifndef NETWORKIT_IO_GML_GRAPH_WRITER_HPP_
 #define NETWORKIT_IO_GML_GRAPH_WRITER_HPP_
 
@@ -28,7 +26,7 @@ public:
      * @param[in]  G     Graph of type NetworKit with 2D coordinates.
      * @param[in]  path  Path to file.
      */
-    void write(const Graph &G, const std::string &path) override;
+    void write(const Graph &G, std::string_view path) override;
 };
 
 } /* namespace NetworKit */

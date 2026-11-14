@@ -9,7 +9,8 @@ void NetworKit::CoverHubDominance::run() {
     hasRun = false;
     Aux::SignalHandler handler;
 
-    std::unique_ptr<std::atomic<count>[]> maxInternalDeg(new std::atomic<count>[C->upperBound()]{});
+    std::unique_ptr<std::atomic<count>[]> maxInternalDeg(
+        new std::atomic<count>[C->upperBound()] {});
 
     handler.assureRunning();
 
@@ -17,7 +18,7 @@ void NetworKit::CoverHubDominance::run() {
         for (index c : (*C)[u]) {
             count internalDeg = 0;
             G->forNeighborsOf(u, [&](node v) {
-                if ((*C)[v].count(c) > 0) {
+                if ((*C)[v].contains(c)) {
                     internalDeg++;
                 }
             });
@@ -56,7 +57,8 @@ void NetworKit::CoverHubDominance::run() {
 
             double dominance = 1;
             if (clusterSizes[i] > 1) {
-                dominance = static_cast<double>(maxInternalDeg[i]) * 1.0 / static_cast<double>(clusterSizes[i] - 1);
+                dominance = static_cast<double>(maxInternalDeg[i]) * 1.0
+                            / static_cast<double>(clusterSizes[i] - 1);
             }
 
             values[i] = dominance;

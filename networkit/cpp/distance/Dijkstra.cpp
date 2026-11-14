@@ -11,10 +11,10 @@
 
 namespace NetworKit {
 
-Dijkstra::Dijkstra(const Graph &G, node source, bool storePaths,
-                   bool storeNodesSortedByDistance, node target)
+Dijkstra::Dijkstra(const Graph &G, node source, bool storePaths, bool storeNodesSortedByDistance,
+                   node target)
     : SSSP(G, source, storePaths, storeNodesSortedByDistance, target),
-      heap(Compare(distances)) {}
+      heap(Aux::LessInVector<double>{distances}) {}
 
 void Dijkstra::run() {
 
@@ -24,7 +24,7 @@ void Dijkstra::run() {
     auto infDist = std::numeric_limits<edgeweight>::max();
     std::fill(distances.begin(), distances.end(), infDist);
 
-    if (distances.size() < G->upperNodeIdBound()) 
+    if (distances.size() < G->upperNodeIdBound())
         distances.resize(G->upperNodeIdBound(), infDist);
 
     sumDist = 0.;
@@ -50,7 +50,7 @@ void Dijkstra::run() {
 
     auto initPath = [&](node u, node v) {
         if (storePaths) {
-            previous[v] = {u};
+            previous[v].assign(1, u);
             npaths[v] = npaths[u];
         }
     };

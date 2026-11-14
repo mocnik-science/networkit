@@ -4,7 +4,6 @@
  *  Created on: 26.05.2018
  *      Author:  Hung Tran <htran@ae.cs.uni-frankfurt.de>, Manuel Penschuck <networkit@manuel.jetzt>
  */
-// networkit-format
 
 #include "CurveballImpl.hpp"
 #include <networkit/auxiliary/Random.hpp>
@@ -24,10 +23,6 @@ void Curveball::run(const CurveballDetails::trade_vector &trades) {
 
 Graph Curveball::getGraph(bool parallel) {
     return impl->getGraph(parallel);
-}
-
-std::string Curveball::toString() const {
-    return "Curveball";
 }
 
 count Curveball::getNumberOfAffectedEdges() const {

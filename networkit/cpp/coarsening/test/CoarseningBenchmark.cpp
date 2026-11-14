@@ -7,22 +7,21 @@
 
 #include <gtest/gtest.h>
 
-#include <networkit/generators/ErdosRenyiGenerator.hpp>
-#include <networkit/community/ClusteringGenerator.hpp>
-#include <networkit/coarsening/ParallelPartitionCoarsening.hpp>
-#include <networkit/coarsening/ClusteringProjector.hpp>
-#include <networkit/community/ClusteringGenerator.hpp>
-#include <networkit/auxiliary/Timer.hpp>
 #include <networkit/auxiliary/Log.hpp>
+#include <networkit/auxiliary/Timer.hpp>
+#include <networkit/coarsening/ClusteringProjector.hpp>
+#include <networkit/coarsening/ParallelPartitionCoarsening.hpp>
+#include <networkit/community/ClusteringGenerator.hpp>
+#include <networkit/generators/ErdosRenyiGenerator.hpp>
 
 namespace NetworKit {
 
-class CoarseningBenchmark: public testing::Test {};
+class CoarseningBenchmark : public testing::Test {};
 
 TEST_F(CoarseningBenchmark, benchmarkCoarsening) {
     count n = 10000;
     count redF = 100; // reduction factor
-    count k = n/redF;
+    count k = n / redF;
     DEBUG("generating graph with ", n, " nodes");
     auto gen = ErdosRenyiGenerator(n, 0.05);
     Graph G = gen.generate();
@@ -31,20 +30,19 @@ TEST_F(CoarseningBenchmark, benchmarkCoarsening) {
     ClusteringGenerator clusteringGen;
     Partition zeta = clusteringGen.makeRandomClustering(G, k);
 
-    //count k = zeta.numberOfSubsets();
     DEBUG("number of subsets: ", k);
 
     Aux::Timer timer;
-    INFO("parallel coarsening");
+    INFO("sequential coarsening");
     timer.start();
     ParallelPartitionCoarsening coarsening(G, zeta, false);
     coarsening.run();
     timer.stop();
     Graph Gc2 = coarsening.getCoarseGraph();
-    INFO("parallel coarsening: ", timer.elapsedTag());
+    INFO("sequential coarsening: ", timer.elapsedTag());
     EXPECT_EQ(k, Gc2.numberOfNodes());
 
-    INFO("parallel coarsening using GraphBuilder");
+    INFO("parallel coarsening");
     timer.start();
     ParallelPartitionCoarsening gbCoarsening(G, zeta, true);
     gbCoarsening.run();
@@ -55,4 +53,3 @@ TEST_F(CoarseningBenchmark, benchmarkCoarsening) {
 }
 
 } /* namespace NetworKit */
-

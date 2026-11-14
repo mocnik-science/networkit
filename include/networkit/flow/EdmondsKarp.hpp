@@ -2,7 +2,8 @@
  * EdmondsKarp.hpp
  *
  *  Created on: 11.06.2014
- *      Author: Michael Wegner (michael.wegner@student.kit.edu), Michael Hamann <michael.hamann@kit.edu>
+ *      Author: Michael Wegner (michael.wegner@student.kit.edu), Michael Hamann
+ * <michael.hamann@kit.edu>
  */
 
 #ifndef NETWORKIT_FLOW_EDMONDS_KARP_HPP_
@@ -27,14 +28,6 @@ class EdmondsKarp final : public Algorithm {
     std::vector<edgeweight> flow;
     edgeweight flowValue;
 
-    /**
-     * Performs a breadth-first search on the graph from the source node to find an augmenting path to the sink node respecting the flow values
-     * @param residFlow The residual flow in the network.
-     * @param pred Used to store the path from the source to the sink.
-     * @return The gain in terms of flow.
-     */
-    edgeweight BFS(std::vector< edgeweight > &residFlow, std::vector< node > &pred) const;
-
 public:
     /**
      * Constructs an instance of the EdmondsKarp algorithm for the given graph, source and sink
@@ -42,7 +35,7 @@ public:
      * @param source The source node.
      * @param sink The sink node.
      */
-     EdmondsKarp(const Graph &graph, node source, node sink);
+    EdmondsKarp(const Graph &graph, node source, node sink);
 
     /**
      * Computes the maximum flow, executes the EdmondsKarp algorithm.
@@ -86,11 +79,32 @@ public:
 
     /**
      * Return a copy of the flow values of all edges.
-     * @note Instead of copying all values you can also use the inline function "getFlow(edgeid)" in order to access the values efficiently.
+     * @note Instead of copying all values you can also use the inline function "getFlow(edgeid)" in
+     * order to access the values efficiently.
      *
      * @return The flow values of all edges
      */
     const std::vector<edgeweight> &getFlowVector() const;
+
+private:
+    void runUndirected();
+    void runDirected();
+
+    /**
+     * Performs an undirected breadth-first search on the graph from the source node to find
+     * an augmenting path to the sink node respecting the flow values
+     * @param pred Used to store the path from the source to the sink.
+     * @return The gain in terms of flow.
+     */
+    edgeweight BFS(std::vector<node> &pred) const;
+
+    /**
+     * Performs a directed breadth-first search on the graph from the source node to find
+     * an augmenting path to the sink node respecting the flow values
+     * @param pred Used to store the path from the source to the sink.
+     * @return The gain in terms of flow.
+     */
+    edgeweight directedBFS(const std::vector<count> &reverseEdges, std::vector<node> &pred) const;
 };
 
 } /* namespace NetworKit */
